@@ -37,17 +37,15 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
 
-    # Instantiate and connect widgets ...
-
     #
-    # Parameters Area
+    # Images Area
     #
-    parametersCollapsibleButton = ctk.ctkCollapsibleButton()
-    parametersCollapsibleButton.text = "Images"
-    self.layout.addWidget(parametersCollapsibleButton)
+    imagesCollapsibleButton = ctk.ctkCollapsibleButton()
+    imagesCollapsibleButton.text = "Images"
+    self.layout.addWidget(imagesCollapsibleButton)
 
     # Layout within the dummy collapsible button
-    parametersFormLayout = qt.QFormLayout(parametersCollapsibleButton)
+    imagesFormLayout = qt.QFormLayout(imagesCollapsibleButton)
 
     #
     # input volume selector
@@ -63,7 +61,7 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     self.inputSelector.showChildNodeTypes = False
     self.inputSelector.setMRMLScene( slicer.mrmlScene )
     self.inputSelector.setToolTip( "Choose the input image ." )
-    parametersFormLayout.addRow("Input Image: ", self.inputSelector)
+    imagesFormLayout.addRow("Input Image: ", self.inputSelector)
 
     #
     # input label image selector
@@ -81,7 +79,7 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     self.labelSelector.showChildNodeTypes = False
     #self.labelSelector.setMRMLScene( slicer.mrmlScene )
     self.labelSelector.setToolTip( "Select active segmentation image or create a new one." )
-    parametersFormLayout.addRow("Label Image: ", self.labelSelector)
+    imagesFormLayout.addRow("Label Image: ", self.labelSelector)
     
     #
     # window/level presets
@@ -90,18 +88,18 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     self.presetsFrame.setLayout(qt.QHBoxLayout())
     self.presetsFrame.layout().setSpacing(0)
     self.presetsFrame.layout().setMargin(0)
-    parametersFormLayout.addRow("W/L Presets:", self.presetsFrame)
+    imagesFormLayout.addRow("W/L Presets:", self.presetsFrame)
     self.preset1Button = qt.QPushButton("Inverted Grey")
     self.preset1Button.toolTip = "PET SUV image preset (window = 6, level = 3)" 
     self.presetsFrame.layout().addWidget(self.preset1Button)
-    self.preset2Button = qt.QPushButton("Preset 2")
-    self.preset2Button.toolTip = "preset 2 (not implemented)" 
+    self.preset2Button = qt.QPushButton("Rainbow")
+    self.preset2Button.toolTip = "PET SUV image preset (window = 22.6, level = 9.3)" 
     self.presetsFrame.layout().addWidget(self.preset2Button)
     self.preset3Button = qt.QPushButton("Preset 3")
     self.preset3Button.toolTip = "preset 3 (not implemented)" 
     self.presetsFrame.layout().addWidget(self.preset3Button)
-    self.preset4Button = qt.QPushButton("Preset 4")
-    self.preset4Button.toolTip = "preset 4 (not implemented)" 
+    self.preset4Button = qt.QPushButton("Auto")
+    self.preset4Button.toolTip = "Automatically determines a window/level based on the dynamic range" 
     self.presetsFrame.layout().addWidget(self.preset4Button)
 
     #
@@ -113,7 +111,7 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     self.imageThresholdSliderWidget.maximum = 100
     self.imageThresholdSliderWidget.value = 0.5
     self.imageThresholdSliderWidget.setToolTip("Set threshold value for computing the output image. Voxels that have intensities lower than this value will set to zero.")
-    parametersFormLayout.addRow("Image threshold", self.imageThresholdSliderWidget)
+    imagesFormLayout.addRow("Image threshold", self.imageThresholdSliderWidget)
 
     #
     # Apply Button
@@ -121,7 +119,30 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     self.applyButton = qt.QPushButton("Apply")
     self.applyButton.toolTip = "Run the algorithm."
     self.applyButton.enabled = False
-    parametersFormLayout.addRow(self.applyButton)
+    imagesFormLayout.addRow(self.applyButton)
+    
+    #
+    # editor effect area
+    #
+    editorCollapsibleButton = ctk.ctkCollapsibleButton()
+    editorCollapsibleButton.text = "Segmentation Editor"
+    #self.layout.addWidget(editorCollapsibleButton)
+    editorFormLayout = qt.QFormLayout(editorCollapsibleButton)
+    
+    #
+    # editor effects
+    #
+    slicer.modules.editor.createNewWidgetRepresentation()
+    self.editorWidget = slicer.modules.EditorWidget
+    self.layout.addWidget(self.editorWidget.editLabelMapsFrame)
+    self.editorWidget.editLabelMapsFrame.collapsed = False
+    
+    #
+    # quantitative indices
+    #
+    slicer.modules.quantitativeindicestool.createNewWidgetRepresentation()
+    self.qiWidget = slicer.modules.QuantitativeIndicesToolWidget
+    self.layout.addWidget(self.qiWidget.featuresCollapsibleButton)
 
     # connections
     self.applyButton.connect('clicked(bool)', self.onApplyButton)
@@ -193,6 +214,13 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       selNode = appLogic.GetSelectionNode()
       selNode.SetReferenceActiveLabelVolumeID(imageNode.GetID())
       appLogic.PropagateVolumeSelection()
+      
+      r = slicer.util.getNode("vtkMRMLSliceNodeRed")
+      r.UseLabelOutlineOn()
+      y = slicer.util.getNode("vtkMRMLSliceNodeYellow")
+      y.UseLabelOutlineOn()
+      g = slicer.util.getNode("vtkMRMLSliceNodeGreen")
+      g.UseLabelOutlineOn()
 
   def onPreset1Button(self):
     if self.inputSelector.currentNode():
@@ -201,11 +229,18 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       displayNode = imageNode.GetVolumeDisplayNode()
       displayNode.AutoWindowLevelOff()
       displayNode.SetWindowLevel(6,3)
+      displayNode.SetInterpolate(0)
       displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
       
   def onPreset2Button(self):
     if self.inputSelector.currentNode():
-      print('  Preset 2 currently not implemented')
+      print('  Changing W/L to 22.6/9.3')
+      imageNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
+      displayNode = imageNode.GetVolumeDisplayNode()
+      displayNode.AutoWindowLevelOff()
+      displayNode.SetWindowLevel(22.6,9.3)
+      displayNode.SetInterpolate(0)
+      displayNode.SetAndObserveColorNodeID('vtkMRMLPETProceduralColorNodePET-Rainbow')
 
   def onPreset3Button(self):
     if self.inputSelector.currentNode():
@@ -213,7 +248,11 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
 
   def onPreset4Button(self):
     if self.inputSelector.currentNode():
-      print('  Preset 4 currently not implemented')
+      print('  Automatically determining W/L')
+      imageNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
+      displayNode = imageNode.GetVolumeDisplayNode()
+      displayNode.AutoWindowLevelOn()
+      displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeGrey')
 
   def onSelect(self):
     self.applyButton.enabled = self.inputSelector.currentNode() and self.labelSelector.currentNode()
