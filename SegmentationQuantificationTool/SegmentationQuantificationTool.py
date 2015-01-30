@@ -101,25 +101,6 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     self.preset4Button = qt.QPushButton("Auto")
     self.preset4Button.toolTip = "Automatically determines a window/level based on the dynamic range" 
     self.presetsFrame.layout().addWidget(self.preset4Button)
-
-    #
-    # threshold value
-    #
-    self.imageThresholdSliderWidget = ctk.ctkSliderWidget()
-    self.imageThresholdSliderWidget.singleStep = 0.1
-    self.imageThresholdSliderWidget.minimum = -100
-    self.imageThresholdSliderWidget.maximum = 100
-    self.imageThresholdSliderWidget.value = 0.5
-    self.imageThresholdSliderWidget.setToolTip("Set threshold value for computing the output image. Voxels that have intensities lower than this value will set to zero.")
-    imagesFormLayout.addRow("Image threshold", self.imageThresholdSliderWidget)
-
-    #
-    # Apply Button
-    #
-    self.applyButton = qt.QPushButton("Apply")
-    self.applyButton.toolTip = "Run the algorithm."
-    self.applyButton.enabled = False
-    imagesFormLayout.addRow(self.applyButton)
     
     #
     # editor effect area
@@ -143,11 +124,38 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     slicer.modules.quantitativeindicestool.createNewWidgetRepresentation()
     self.qiWidget = slicer.modules.QuantitativeIndicesToolWidget
     self.layout.addWidget(self.qiWidget.featuresCollapsibleButton)
+    self.qiWidget.featuresCollapsibleButton.collapsed = True
+    self.MeanCheckBox = self.qiWidget.MeanCheckBox
+    self.MeanCheckBox.checked = True
+    self.VarianceCheckBox = self.qiWidget.VarianceCheckBox
+    self.MinCheckBox = self.qiWidget.MinCheckBox
+    self.MinCheckBox.checked = True
+    self.MaxCheckBox = self.qiWidget.MaxCheckBox
+    self.MaxCheckBox.checked = True
+    self.Quart1CheckBox = self.qiWidget.Quart1CheckBox
+    self.MedianCheckBox = self.qiWidget.MedianCheckBox
+    self.MedianCheckBox.checked = True
+    self.Quart3CheckBox = self.qiWidget.Quart3CheckBox
+    self.UpperAdjacentCheckBox = self.qiWidget.UpperAdjacentCheckBox
+    self.Q1CheckBox = self.qiWidget.Q1CheckBox
+    self.Q2CheckBox = self.qiWidget.Q2CheckBox
+    self.Q3CheckBox = self.qiWidget.Q3CheckBox
+    self.Q4CheckBox = self.qiWidget.Q4CheckBox
+    self.Gly1CheckBox = self.qiWidget.Gly1CheckBox
+    self.Gly2CheckBox = self.qiWidget.Gly2CheckBox
+    self.Gly3CheckBox = self.qiWidget.Gly3CheckBox
+    self.Gly4CheckBox = self.qiWidget.Gly4CheckBox
+    self.TLGCheckBox = self.qiWidget.TLGCheckBox
+    self.TLGCheckBox.checked = True
+    self.SAMCheckBox = self.qiWidget.SAMCheckBox
+    self.SAMBGCheckBox = self.qiWidget.SAMBGCheckBox
+    self.RMSCheckBox = self.qiWidget.RMSCheckBox
+    self.PeakCheckBox = self.qiWidget.PeakCheckBox
+    self.VolumeCheckBox = self.qiWidget.VolumeCheckBox
+    self.VolumeCheckBox.checked = True
 
     # connections
-    self.applyButton.connect('clicked(bool)', self.onApplyButton)
     self.inputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onVolumeSelect)
-    self.labelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
     self.preset1Button.connect('clicked(bool)',self.onPreset1Button)
     self.preset2Button.connect('clicked(bool)',self.onPreset2Button)
     self.preset3Button.connect('clicked(bool)',self.onPreset3Button)
@@ -155,9 +163,6 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
 
     # Add vertical spacer
     self.layout.addStretch(1)
-
-    # Refresh Apply button state
-    self.onSelect()
 
   def cleanup(self):
     pass
@@ -212,6 +217,7 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
         
       appLogic = slicer.app.applicationLogic()
       selNode = appLogic.GetSelectionNode()
+      selNode.SetReferenceActiveVolumeID(currentNode.GetID())
       selNode.SetReferenceActiveLabelVolumeID(imageNode.GetID())
       appLogic.PropagateVolumeSelection()
       
@@ -253,14 +259,6 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       displayNode = imageNode.GetVolumeDisplayNode()
       displayNode.AutoWindowLevelOn()
       displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeGrey')
-
-  def onSelect(self):
-    self.applyButton.enabled = self.inputSelector.currentNode() and self.labelSelector.currentNode()
-
-  def onApplyButton(self):
-    logic = SegmentationQuantificationToolLogic()
-    imageThreshold = self.imageThresholdSliderWidget.value
-    logic.run(self.inputSelector.currentNode(), self.labelSelector.currentNode(), imageThreshold)
 
 #
 # SegmentationQuantificationToolLogic
