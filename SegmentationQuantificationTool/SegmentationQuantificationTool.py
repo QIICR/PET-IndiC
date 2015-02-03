@@ -36,7 +36,8 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
 
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
-
+    self.logic = SegmentationQuantificationToolLogic()
+    
     #
     # Images Area
     #
@@ -101,14 +102,10 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     self.preset4Button = qt.QPushButton("Auto")
     self.preset4Button.toolTip = "Automatically determines a window/level based on the dynamic range" 
     self.presetsFrame.layout().addWidget(self.preset4Button)
-    
-    #
-    # editor effect area
-    #
-    editorCollapsibleButton = ctk.ctkCollapsibleButton()
-    editorCollapsibleButton.text = "Segmentation Editor"
-    #self.layout.addWidget(editorCollapsibleButton)
-    editorFormLayout = qt.QFormLayout(editorCollapsibleButton)
+    self.preset1Button.setEnabled(0)
+    self.preset2Button.setEnabled(0)
+    self.preset3Button.setEnabled(0)
+    self.preset4Button.setEnabled(0)
     
     #
     # editor effects
@@ -153,6 +150,7 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     self.PeakCheckBox = self.qiWidget.PeakCheckBox
     self.VolumeCheckBox = self.qiWidget.VolumeCheckBox
     self.VolumeCheckBox.checked = True
+    self.calculateButton = self.qiWidget.calculateButton
 
     # connections
     self.inputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onVolumeSelect)
@@ -160,6 +158,7 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     self.preset2Button.connect('clicked(bool)',self.onPreset2Button)
     self.preset3Button.connect('clicked(bool)',self.onPreset3Button)
     self.preset4Button.connect('clicked(bool)',self.onPreset4Button)
+    self.editorWidget.toolsColor.colorSpin.connect('valueChanged(int)', self.onLabelValueChanged)
 
     # Add vertical spacer
     self.layout.addStretch(1)
@@ -173,53 +172,19 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       imageNode = None
       self.labelSelector.setMRMLScene( slicer.mrmlScene )
       currentNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
-      imageName = currentNode.GetName()
-      scalarVolumes = slicer.mrmlScene.GetNodesByClass('vtkMRMLScalarVolumeNode')
-      print('Number of scalar volumes: ' + scalarVolumes.GetNumberOfItems().__str__())
-      labelFound = False
-      for idx in xrange(0,scalarVolumes.GetNumberOfItems()):
-        imageNode = scalarVolumes.GetItemAsObject(idx)
-        if imageNode.GetName() == (imageName + '_label'):
-          print('Found dedicated label ' + imageNode.GetName())
-          self.labelSelector.setCurrentNode(imageNode)
-          labelFound = True
-          break
-      if not labelFound:
-        print('Creating dedicated label ' + imageName + '_label')
-        # TODO find a better way to create a blank label map
-        imageNode = slicer.vtkMRMLScalarVolumeNode()
-        newLabelData = vtk.vtkImageData()
-        newLabelData.DeepCopy(currentNode.GetImageData())
-        ijkToRAS = vtk.vtkMatrix4x4()
-        currentNode.GetIJKToRASMatrix(ijkToRAS)
-        imageNode.SetIJKToRASMatrix(ijkToRAS)
-        caster = vtk.vtkImageCast()
-        caster.SetOutputScalarTypeToShort()
-        caster.SetInputData(newLabelData)
-        caster.Update()
-        newLabelData.DeepCopy(caster.GetOutput())
-        imageNode.SetAndObserveImageData(newLabelData)
-        
-        multiplier = vtk.vtkImageMathematics()
-        multiplier.SetOperationToMultiplyByK()
-        multiplier.SetConstantK(0)
-        if vtk.VTK_MAJOR_VERSION <= 5:
-          multiplier.SetInput1(imageNode.GetImageData())
-        else:
-          multiplier.SetInput1Data(imageNode.GetImageData())
-        multiplier.Update()
-        imageNode.GetImageData().DeepCopy(multiplier.GetOutput())
-         
-        imageNode.SetLabelMap(1)
-        imageNode.SetName(imageName + '_label')
-        slicer.mrmlScene.AddNode(imageNode)
-        self.labelSelector.setCurrentNode(imageNode)
+      imageNode = self.logic.getLabelNodeForNode(currentNode)
+      self.labelSelector.setCurrentNode(imageNode)
         
       appLogic = slicer.app.applicationLogic()
       selNode = appLogic.GetSelectionNode()
       selNode.SetReferenceActiveVolumeID(currentNode.GetID())
       selNode.SetReferenceActiveLabelVolumeID(imageNode.GetID())
       appLogic.PropagateVolumeSelection()
+
+      # TODO figure out how to observe only image data changes,
+      # currently this is also triggered when the image name changes      
+      imageNode.AddObserver('ModifiedEvent', self.labelModified)
+      #imageNode.AddObserver('ImageDataModifiedEvent', self.labelModified)
       
       r = slicer.util.getNode("vtkMRMLSliceNodeRed")
       r.UseLabelOutlineOn()
@@ -227,26 +192,26 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       y.UseLabelOutlineOn()
       g = slicer.util.getNode("vtkMRMLSliceNodeGreen")
       g.UseLabelOutlineOn()
+      self.preset1Button.setEnabled(1)
+      self.preset2Button.setEnabled(1)
+      self.preset3Button.setEnabled(1)
+      self.preset4Button.setEnabled(1)
+    else:
+      self.preset1Button.setEnabled(0)
+      self.preset2Button.setEnabled(0)
+      self.preset3Button.setEnabled(0)
+      self.preset4Button.setEnabled(0)
+      
 
   def onPreset1Button(self):
     if self.inputSelector.currentNode():
-      print('  Changing W/L to 6/3')
       imageNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
-      displayNode = imageNode.GetVolumeDisplayNode()
-      displayNode.AutoWindowLevelOff()
-      displayNode.SetWindowLevel(6,3)
-      displayNode.SetInterpolate(0)
-      displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
+      self.logic.presetSUVInvertedGrey(imageNode)
       
   def onPreset2Button(self):
     if self.inputSelector.currentNode():
-      print('  Changing W/L to 22.6/9.3')
       imageNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
-      displayNode = imageNode.GetVolumeDisplayNode()
-      displayNode.AutoWindowLevelOff()
-      displayNode.SetWindowLevel(22.6,9.3)
-      displayNode.SetInterpolate(0)
-      displayNode.SetAndObserveColorNodeID('vtkMRMLPETProceduralColorNodePET-Rainbow')
+      self.logic.presetSUVRainbow(imageNode)
 
   def onPreset3Button(self):
     if self.inputSelector.currentNode():
@@ -254,11 +219,16 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
 
   def onPreset4Button(self):
     if self.inputSelector.currentNode():
-      print('  Automatically determining W/L')
       imageNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
-      displayNode = imageNode.GetVolumeDisplayNode()
-      displayNode.AutoWindowLevelOn()
-      displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeGrey')
+      self.logic.presetGreyAuto(imageNode)
+      
+  def labelModified(self, caller, event):
+    if caller.GetID() == self.labelSelector.currentNodeID:
+      print('   *** GOT EVENT FROM vtkMRMLScalarVolumeNode ***')
+      
+  def onLabelValueChanged(self, label):
+    print('   *** Color Spin Box changed to label: ' + str(label) + ' ***')
+      
 
 #
 # SegmentationQuantificationToolLogic
@@ -273,6 +243,73 @@ class SegmentationQuantificationToolLogic(ScriptedLoadableModuleLogic):
   Uses ScriptedLoadableModuleLogic base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
+
+  def getLabelNodeForNode(self, currentNode):
+    """Search for the dedicated label image. If none found, return a new one."""
+    imageNode = None
+    imageName = currentNode.GetName()
+    scalarVolumes = slicer.mrmlScene.GetNodesByClass('vtkMRMLScalarVolumeNode')
+    print('Number of scalar volumes: ' + scalarVolumes.GetNumberOfItems().__str__())
+    labelFound = False
+    for idx in xrange(0,scalarVolumes.GetNumberOfItems()):
+      imageNode = scalarVolumes.GetItemAsObject(idx)
+      if imageNode.GetName() == (imageName + '_label'):
+        print('Found dedicated label ' + imageNode.GetName())
+        labelFound = True
+        break
+    if not labelFound:
+      print('Creating dedicated label ' + imageName + '_label')
+      # TODO find a better way to create a blank label map
+      imageNode = slicer.vtkMRMLScalarVolumeNode()
+      newLabelData = vtk.vtkImageData()
+      newLabelData.DeepCopy(currentNode.GetImageData())
+      ijkToRAS = vtk.vtkMatrix4x4()
+      currentNode.GetIJKToRASMatrix(ijkToRAS)
+      imageNode.SetIJKToRASMatrix(ijkToRAS)
+      caster = vtk.vtkImageCast()
+      caster.SetOutputScalarTypeToShort()
+      caster.SetInputData(newLabelData)
+      caster.Update()
+      newLabelData.DeepCopy(caster.GetOutput())
+      imageNode.SetAndObserveImageData(newLabelData)
+      
+      multiplier = vtk.vtkImageMathematics()
+      multiplier.SetOperationToMultiplyByK()
+      multiplier.SetConstantK(0)
+      if vtk.VTK_MAJOR_VERSION <= 5:
+        multiplier.SetInput1(imageNode.GetImageData())
+      else:
+        multiplier.SetInput1Data(imageNode.GetImageData())
+      multiplier.Update()
+      imageNode.GetImageData().DeepCopy(multiplier.GetOutput())
+       
+      imageNode.SetLabelMap(1)
+      imageNode.SetName(imageName + '_label')
+      slicer.mrmlScene.AddNode(imageNode)
+
+    return imageNode
+
+  def presetSUVInvertedGrey(self, imageNode):
+    print('  Changing W/L to 6/3')
+    displayNode = imageNode.GetVolumeDisplayNode()
+    displayNode.AutoWindowLevelOff()
+    displayNode.SetWindowLevel(6,3)
+    displayNode.SetInterpolate(0)
+    displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
+    
+  def presetSUVRainbow(self, imageNode):
+    print('  Changing W/L to 22.6/9.3')
+    displayNode = imageNode.GetVolumeDisplayNode()
+    displayNode.AutoWindowLevelOff()
+    displayNode.SetWindowLevel(22.6,9.3)
+    displayNode.SetInterpolate(0)
+    displayNode.SetAndObserveColorNodeID('vtkMRMLPETProceduralColorNodePET-Rainbow')
+    
+  def presetGreyAuto(self, imageNode):
+    print('  Automatically determining W/L')
+    displayNode = imageNode.GetVolumeDisplayNode()
+    displayNode.AutoWindowLevelOn()
+    displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeGrey')
 
   def hasImageData(self,volumeNode):
     """This is an example logic method that
