@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="utf-8"?>
+<executable>
+  <category>Quantification</category>
+  <title>Quantitative Indices</title>
+  <description><![CDATA[Calculate quantitative indices for a specified label. Requires grayscale and label images as input.]]></description>
+  <version>0.1.0</version>
+  <documentation-url>https://github.com/QIICR/Slicer-QuantitativeIndicesExt</documentation-url>
+  <license/>
+  <contributor>Ethan Ulrich (University of Iowa), Andrey Fedorov (SPL), Markus van Tol (University of Iowa), Christian Bauer (University of Iowa), Reinhard Beichel (University of Iowa), John Buatti (University of Iowa)</contributor>
+  <acknowledgements><![CDATA[This work is funded in part by Quantitative Imaging to Assess Response in Cancer Therapy Trials NIH grant U01-CA140206 and Quantitative Image Informatics for Cancer Research (QIICR) NIH grant U24 CA180918. ]]></acknowledgements>
+  <parameters advanced='true'>
+    <label>Software Info</label>
+    <description><![CDATA[Information about software version]]></description>
+    <string>
+      <name>Software_Version</name>
+      <label>Software Version</label>
+      <channel>output</channel>
+      <description><![CDATA[Repository version of Quantitative Indices Extension (must run module)]]></description>
+    </string>
+  </parameters>
+  <parameters>
+    <label>Input Images</label>
+    <description><![CDATA[Input images]]></description>
+    <image type="scalar">
+      <name>Grayscale_Image</name>
+      <label>Grayscale Image</label>
+      <channel>input</channel>
+      <index>0</index>
+      <description><![CDATA[Grayscale Image File]]></description>
+    </image>
+    <image type="label">
+      <name>Label_Image</name>
+      <label>Label Image</label>
+      <channel>input</channel>
+      <index>1</index>
+      <description><![CDATA[Label Map Image File]]></description>
+    </image>
+    <integer>
+      <name>Label_Value</name>
+      <label>Label Value</label>
+      <description>Label Map value for region to be quantified</description>
+      <index>2</index>
+      <default>1</default>
+      <constraints>
+        <minimum>0</minimum>
+        <maximum>100</maximum>
+        <step>1</step>
+      </constraints>
+    </integer>
+  </parameters>
+  <parameters>
+    <label>Quantitative Indices Selection</label>
+    <description><![CDATA[Indices to be calculated]]></description>
+    <boolean>
+      <name>Mean</name>
+      <label>Mean</label>
+      <longflag>--mean</longflag>
+      <description><![CDATA[Mean value in region of interest]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>Variance</name>
+      <label>Variance</label>
+      <longflag>--variance</longflag>
+      <description><![CDATA[Variance in region of interest]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>Min</name>
+      <label>Min</label>
+      <longflag>--min</longflag>
+      <description><![CDATA[Minimum value in region of interest]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>Max</name>
+      <label>Max</label>
+      <longflag>--max</longflag>
+      <description><![CDATA[Maximum value in region of interest]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>RMS</name>
+      <label>RMS</label>
+      <longflag>--rms</longflag>
+      <description><![CDATA[Root-mean-square value in region of interest]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>Volume</name>
+      <label>Volume</label>
+      <longflag>--volume</longflag>
+      <description><![CDATA[Volume of region of interest]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>First_Quartile</name>
+      <label>First Quartile</label>
+      <longflag>--quart1</longflag>
+      <description><![CDATA[First quartile in region of interest]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>Median</name>
+      <label>Median</label>
+      <longflag>--median</longflag>
+      <description><![CDATA[Median value in region of interest]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>Third_Quartile</name>
+      <label>Third Quartile</label>
+      <longflag>--quart3</longflag>
+      <description><![CDATA[Third quartile in region of interest]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>Upper_Adjacent</name>
+      <label>Upper Adjacent</label>
+      <longflag>--adj</longflag>
+      <description><![CDATA[Upper adjacent value in region of interest]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>TLG</name>
+      <label>TLG</label>
+      <longflag>--tlg</longflag>
+      <description><![CDATA[Total lesion glycolysis]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>Glycolysis_Q1</name>
+      <label>Glycolysis Q1</label>
+      <longflag>--gly1</longflag>
+      <description><![CDATA[Lesion glycolysis calculated from 1st quarter of distribution]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>Glycolysis_Q2</name>
+      <label>Glycolysis Q2</label>
+      <longflag>--gly2</longflag>
+      <description><![CDATA[Lesion glycolysis calculated from 2nd quarter of distribution]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>Glycolysis_Q3</name>
+      <label>Glycolysis Q3</label>
+      <longflag>--gly3</longflag>
+      <description><![CDATA[Lesion glycolysis calculated from 3rd quarter of distribution]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>Glycolysis_Q4</name>
+      <label>Glycolysis Q4</label>
+      <longflag>--gly4</longflag>
+      <description><![CDATA[Lesion glycolysis calculated from 4th quarter of distribution]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>Q1_Distribution</name>
+      <label>Q1 Distribution</label>
+      <longflag>--q1</longflag>
+      <description><![CDATA[1st quarter distribution of range in region of interest]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>Q2_Distribution</name>
+      <label>Q2 Distribution</label>
+      <longflag>--q2</longflag>
+      <description><![CDATA[2nd quarter distribution of range in region of interest]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>Q3_Distribution</name>
+      <label>Q3 Distribution</label>
+      <longflag>--q3</longflag>
+      <description><![CDATA[3rd quarter distribution of range in region of interest]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>Q4_Distribution</name>
+      <label>Q4 Distribution</label>
+      <longflag>--q4</longflag>
+      <description><![CDATA[4th quarter distribution of range in region of interest]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>SAM</name>
+      <label>SAM</label>
+      <longflag>--sam</longflag>
+      <description><![CDATA[Standardized added metabolic activity]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>SAM_Background</name>
+      <label>SAM mean background</label>
+      <longflag>--sambg</longflag>
+      <description><![CDATA[Standardized added metabolic activity mean background]]></description>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>Peak</name>
+      <label>Peak</label>
+      <longflag>--peak</longflag>
+      <description><![CDATA[Peak value in region of interest]]></description>
+      <default>false</default>
+    </boolean>
+  </parameters>
+  <parameters advanced='true'>
+    <label>Quantitative Indices Output</label>
+    <description><![CDATA[Output of quantitative indices calculation]]></description>
+    <string>
+      <name>Mean_s</name>
+      <label>Mean</label>
+      <channel>output</channel>
+      <description><![CDATA[Mean value in region of interest]]></description>
+    </string>
+    <string>
+      <name>Variance_s</name>
+      <label>Variance</label>
+      <channel>output</channel>
+      <description><![CDATA[Variance in region of interest]]></description>
+    </string>
+    <string>
+      <name>Min_s</name>
+      <label>Min</label>
+      <channel>output</channel>
+      <description><![CDATA[Minimum value in region of interest]]></description>
+    </string>
+    <string>
+      <name>Max_s</name>
+      <label>Max</label>
+      <channel>output</channel>
+      <description><![CDATA[Maximum value in region of interest]]></description>
+    </string>
+    <string>
+      <name>RMS_s</name>
+      <label>RMS</label>
+      <channel>output</channel>
+      <description><![CDATA[Root-mean-square value in region of interest]]></description>
+    </string>
+    <string>
+      <name>Volume_s</name>
+      <label>Volume</label>
+      <channel>output</channel>
+      <description><![CDATA[Volume of region of interest]]></description>
+    </string>
+    <string>
+      <name>First_Quartile_s</name>
+      <label>1st Quartile</label>
+      <channel>output</channel>
+      <description><![CDATA[First quartile in region of interest]]></description>
+    </string>
+    <string>
+      <name>Median_s</name>
+      <label>Median</label>
+      <channel>output</channel>
+      <description><![CDATA[Median value in region of interest]]></description>
+    </string>
+    <string>
+      <name>Third_Quartile_s</name>
+      <label>3rd Quartile</label>
+      <channel>output</channel>
+      <description><![CDATA[Third quartile in region of interest]]></description>
+    </string>
+    <string>
+      <name>Upper_Adjacent_s</name>
+      <label>Upper Adjacent</label>
+      <channel>output</channel>
+      <description><![CDATA[Upper adjacent value in region of interest]]></description>
+    </string>
+    <string>
+      <name>TLG_s</name>
+      <label>TLG</label>
+      <channel>output</channel>
+      <description><![CDATA[Total lesion glycolysis]]></description>
+    </string>
+    <string>
+      <name>Glycolysis_Q1_s</name>
+      <label>Glycolysis Q1</label>
+      <channel>output</channel>
+      <description><![CDATA[Lesion glycolysis calculated from 1st quarter of distribution]]></description>
+    </string>
+    <string>
+      <name>Glycolysis_Q2_s</name>
+      <label>Glycolysis Q2</label>
+      <channel>output</channel>
+      <description><![CDATA[Lesion glycolysis calculated from 2nd quarter of distribution]]></description>
+    </string>
+    <string>
+      <name>Glycolysis_Q3_s</name>
+      <label>Glycolysis Q3</label>
+      <channel>output</channel>
+      <description><![CDATA[Lesion glycolysis calculated from 3rd quarter of distribution]]></description>
+    </string>
+    <string>
+      <name>Glycolysis_Q4_s</name>
+      <label>Glycolysis Q4</label>
+      <channel>output</channel>
+      <description><![CDATA[Lesion glycolysis calculated from 4th quarter of distribution]]></description>
+    </string>
+    <string>
+      <name>Q1_Distribution_s</name>
+      <label>Q1 Distribution</label>
+      <channel>output</channel>
+      <description><![CDATA[1st quarter distribution of range in region of interest]]></description>
+    </string>
+    <string>
+      <name>Q2_Distribution_s</name>
+      <label>Q2 Distribution</label>
+      <channel>output</channel>
+      <description><![CDATA[2nd quarter distribution of range in region of interest]]></description>
+    </string>
+    <string>
+      <name>Q3_Distribution_s</name>
+      <label>Q3 Distribution</label>
+      <channel>output</channel>
+      <description><![CDATA[3rd quarter distribution of range in region of interest]]></description>
+    </string>
+    <string>
+      <name>Q4_Distribution_s</name>
+      <label>Q4 Distribution</label>
+      <channel>output</channel>
+      <description><![CDATA[4th quarter distribution of range in region of interest]]></description>
+    </string>
+    <string>
+      <name>SAM_s</name>
+      <label>SAM</label>
+      <channel>output</channel>
+      <description><![CDATA[Standardized added metabolic activity]]></description>
+    </string>
+    <string>
+      <name>SAM_Background_s</name>
+      <label>SAM mean background</label>
+      <channel>output</channel>
+      <description><![CDATA[Standardized added metabolic activity mean background]]></description>
+    </string>
+    <string>
+      <name>Peak_s</name>
+      <label>Peak</label>
+      <channel>output</channel>
+      <description><![CDATA[Peak value in region of interest]]></description>
+    </string>
+  </parameters>
+</executable>

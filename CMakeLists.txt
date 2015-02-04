@@ -19,7 +19,16 @@ include(${Slicer_USE_FILE})
 #-----------------------------------------------------------------------------
 # Extension modules
 add_subdirectory(SegmentationQuantificationTool)
-## NEXT_MODULE
+add_subdirectory(QuantitativeIndicesCLI)
+add_subdirectory(QuantitativeIndicesTool)
 
 #-----------------------------------------------------------------------------
 include(${Slicer_EXTENSION_CPACK})
+
+#-----------------------------------------------------------------------------
+SlicerMacroExtractRepositoryInfo(VAR_PREFIX QuantitativeIndicesExt)
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/CMake/vtkQuantitativeIndicesExtVersionConfigure.h.in
+    #${CMAKE_CURRENT_BINARY_DIR}/vtkQuantitativeIndicesExtVersionConfigure.h
+    ${CMAKE_CURRENT_BINARY_DIR}/QuantitativeIndicesCLI/vtkQuantitativeIndicesExtVersionConfigure.h
+    )
