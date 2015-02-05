@@ -1,13 +1,15 @@
 import os
 import unittest
 from __main__ import vtk, qt, ctk, slicer
+from slicer.ScriptedLoadableModule import *
 
 #
 # QuantitativeIndices
 #
 
-class QuantitativeIndicesTool:
+class QuantitativeIndicesTool(ScriptedLoadableModule):
   def __init__(self, parent):
+    ScriptedLoadableModule.__init__(self, parent)
     parent.title = "Quantitative Indices Tool" # TODO make this more human readable by adding spaces
     parent.categories = ["Quantification"]
     parent.dependencies = []
@@ -21,7 +23,7 @@ class QuantitativeIndicesTool:
     parent.acknowledgementText = """
     This work is funded in part by Quantitative Imaging to Assess Response in Cancer Therapy Trials NIH grant U01-CA140206 and Quantitative Image Informatics for Cancer Research (QIICR) NIH grant U24 CA180918.
     """ # replace with organization, grant and thanks.
-    self.parent = parent
+    #self.parent = parent
 
     # Add this test to the SelfTest module's list for discovery when the module
     # is created.  Since this module may be discovered before SelfTests itself,
@@ -40,8 +42,8 @@ class QuantitativeIndicesTool:
 # qQuantitativeIndicesToolWidget
 #
 
-class QuantitativeIndicesToolWidget:
-  def __init__(self, parent = None):
+class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
+  """def __init__(self, parent = None):
     if not parent:
       self.parent = slicer.qMRMLWidget()
       self.parent.setLayout(qt.QVBoxLayout())
@@ -51,10 +53,11 @@ class QuantitativeIndicesToolWidget:
     self.layout = self.parent.layout()
     if not parent:
       self.setup()
-      self.parent.show()
+      self.parent.show()"""
 
   def setup(self):
-    # Instantiate and connect widgets ...
+    ScriptedLoadableModuleWidget.setup(self)
+    """# Instantiate and connect widgets ...
 
     #
     # Reload and Test area
@@ -81,7 +84,7 @@ class QuantitativeIndicesToolWidget:
     self.reloadAndTestButton.toolTip = "Reload this module and then run the self tests."
     reloadFormLayout.addWidget(self.reloadAndTestButton)
     self.reloadAndTestButton.connect('clicked()', self.onReloadAndTest)
-    self.reloadAndTestButton.setEnabled(False)
+    self.reloadAndTestButton.setEnabled(False)"""
 
     #
     # Parameters Area
@@ -527,7 +530,8 @@ class QuantitativeIndicesToolWidget:
     self.calculateButton.repaint()
     slicer.app.processEvents()
 
-    logic = QuantitativeIndicesToolLogic(self.grayscaleNode,self.labelNode)
+    #logic = QuantitativeIndicesToolLogic(self.grayscaleNode,self.labelNode)
+    logic = QuantitativeIndicesToolLogic()
     #enableScreenshotsFlag = self.enableScreenshotsFlagCheckBox.checked
     #screenshotScaleFactor = int(self.screenshotScaleFactorSliderWidget.value)
     labelValue = int(self.labelValueSelector.value)
@@ -665,17 +669,18 @@ class QuantitativeIndicesToolWidget:
 # QuantitativeIndicesToolLogic
 #
 
-class QuantitativeIndicesToolLogic:
+class QuantitativeIndicesToolLogic(ScriptedLoadableModuleLogic):
   """This class should implement all the actual 
   computation done by your module.  The interface 
   should be such that other python code can import
   this class and make use of the functionality without
   requiring an instance of the Widget
   """
-  def __init__(self, grayscaleVolume, labelVolume):
+  #def __init__(self, grayscaleVolume, labelVolume):
     #TODO initialize the nodes
-    pass
-
+    #pass
+  def __init__(self, parent = None):
+    ScriptedLoadableModuleLogic.__init__(self, parent)
 
   def hasImageData(self,volumeNode):
     """This is a dummy logic method that 
@@ -812,8 +817,8 @@ class QuantitativeIndicesToolLogic:
 
     return newCLINode
 
-
-class QuantitativeIndicesToolTest(unittest.TestCase):
+class QuantitativeIndicesToolTest(ScriptedLoadableModuleTest):
+#class QuantitativeIndicesToolTest(unittest.TestCase):
   """
   This is the test case for your scripted module.
   """
