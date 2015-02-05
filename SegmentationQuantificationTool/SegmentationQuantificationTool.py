@@ -118,6 +118,7 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     #
     # quantitative indices
     #
+    # TODO show/hide checkboxes based on current volume
     slicer.modules.quantitativeindicestool.createNewWidgetRepresentation()
     self.qiWidget = slicer.modules.QuantitativeIndicesToolWidget
     self.layout.addWidget(self.qiWidget.featuresCollapsibleButton)
@@ -151,6 +152,17 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     self.VolumeCheckBox = self.qiWidget.VolumeCheckBox
     self.VolumeCheckBox.checked = True
     self.calculateButton = self.qiWidget.calculateButton
+    
+    #
+    # units display
+    #
+    self.unitsFrame = qt.QFrame(self.parent)
+    self.unitsFrame.setLayout(qt.QHBoxLayout())
+    #self.unitsFrame.layout().setSpacing(0)
+    #self.unitsFrame.layout().setMargin(0)
+    self.unitsFrameLabel = qt.QLabel('Units: ', self.unitsFrame)
+    self.unitsFrame.layout().addWidget(self.unitsFrameLabel)
+    self.layout.addWidget(self.unitsFrame)
 
     # connections
     self.inputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onVolumeSelect)
@@ -174,6 +186,7 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       currentNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
       imageNode = self.logic.getLabelNodeForNode(currentNode)
       self.labelSelector.setCurrentNode(imageNode)
+      self.unitsFrameLabel.setText('Units: ' + self.logic.getImageUnits(currentNode))
         
       appLogic = slicer.app.applicationLogic()
       selNode = appLogic.GetSelectionNode()
@@ -311,6 +324,13 @@ class SegmentationQuantificationToolLogic(ScriptedLoadableModuleLogic):
     displayNode.AutoWindowLevelOn()
     displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeGrey')
 
+  def getImageUnits(self, imageNode):
+    """Search for units in the image node attributes """
+    units = '(could not retrieve units information)'
+    if imageNode.GetAttribute('DICOM.MeasurementUnitsCodeValue'):
+      units = imageNode.GetAttribute('DICOM.MeasurementUnitsCodeValue')
+    return units
+  
   def hasImageData(self,volumeNode):
     """This is an example logic method that
     returns true if the passed in volume
