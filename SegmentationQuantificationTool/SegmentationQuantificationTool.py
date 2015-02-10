@@ -160,9 +160,18 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     self.unitsFrame.setLayout(qt.QHBoxLayout())
     #self.unitsFrame.layout().setSpacing(0)
     #self.unitsFrame.layout().setMargin(0)
-    self.unitsFrameLabel = qt.QLabel('Units: ', self.unitsFrame)
+    self.unitsFrameLabel = qt.QLabel('Voxel Units: ', self.unitsFrame)
     self.unitsFrame.layout().addWidget(self.unitsFrameLabel)
     self.layout.addWidget(self.unitsFrame)
+    
+    #
+    # results frame
+    #
+    self.resultsFrame = self.qiWidget.resultsFrame
+    self.resultsFrame.layout().setMargin(2)
+    self.layout.addWidget(self.resultsFrame)
+    self.resultsFrameLabel = self.qiWidget.resultsFrameLabel
+    self.resultsFrame.layout().addWidget(self.resultsFrameLabel)
 
     # connections
     self.inputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onVolumeSelect)
@@ -186,7 +195,7 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       currentNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
       imageNode = self.logic.getLabelNodeForNode(currentNode)
       self.labelSelector.setCurrentNode(imageNode)
-      self.unitsFrameLabel.setText('Units: ' + self.logic.getImageUnits(currentNode))
+      self.unitsFrameLabel.setText('Voxel Units: ' + self.logic.getImageUnits(currentNode))
         
       appLogic = slicer.app.applicationLogic()
       selNode = appLogic.GetSelectionNode()
@@ -238,9 +247,43 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
   def labelModified(self, caller, event):
     if caller.GetID() == self.labelSelector.currentNodeID:
       print('   *** GOT EVENT FROM vtkMRMLScalarVolumeNode ***')
+      cliNode = None
+      cliNode = self.logic.calculateOnLabelModified(self.inputSelector.currentNode(), self.labelSelector.currentNode(), None, self.editorWidget.toolsColor.colorSpin.value, self.MeanCheckBox.checked, self.VarianceCheckBox.checked, self.MinCheckBox.checked, self.MaxCheckBox.checked, self.Quart1CheckBox.checked, self.MedianCheckBox.checked, self.Quart3CheckBox.checked, self.UpperAdjacentCheckBox.checked, self.Q1CheckBox.checked, self.Q2CheckBox.checked, self.Q3CheckBox.checked, self.Q4CheckBox.checked, self.Gly1CheckBox.checked, self.Gly2CheckBox.checked, self.Gly3CheckBox.checked, self.Gly4CheckBox.checked, self.TLGCheckBox.checked, self.SAMCheckBox.checked, self.SAMBGCheckBox.checked, self.RMSCheckBox.checked, self.PeakCheckBox.checked, self.VolumeCheckBox.checked)
+      if cliNode:
+        self.writeResults(cliNode)
+      else:
+        print('ERROR: could not read output of Quantitative Indices Calculator')
       
   def onLabelValueChanged(self, label):
     print('   *** Color Spin Box changed to label: ' + str(label) + ' ***')
+    
+  def writeResults(self, vtkMRMLCommandLineModuleNode):
+    """ Creates an output text to display on the screen."""
+    newNode = vtkMRMLCommandLineModuleNode
+    labelValue = int(self.editorWidget.toolsColor.colorSpin.value)
+    #oldNode = self.cliNodes[labelValue]
+    resultText = ''
+    #for i in xrange(0,22):
+    for i in xrange(0,24):
+      newResult = newNode.GetParameterDefault(3,i)
+      if (newResult != '--'):
+        #oldResult = oldNode.GetParameterDefault(3,i)
+        #feature = oldNode.GetParameterName(3,i)
+        feature = newNode.GetParameterName(3,i)
+        #if (oldResult == '--'):
+        #  flagName = oldNode.GetParameterName(2,i)
+        #  oldNode.SetParameterAsString(feature,newResult)
+        #  oldNode.SetParameterAsString(flagName,'true')
+        feature = feature.replace('_s',':\t')
+        feature = feature.replace('_',' ')
+        if len(feature) < 14:
+          feature = feature + '\t'
+        resultText = resultText + feature + newResult + '\n'
+    self.resultsFrameLabel.setText(resultText)
+    # TODO find a better way to retrieve the software revision
+    # use slicer.modules.QuantitativeIndicesToolWidget.software_version to retrieve
+    self.software_version = newNode.GetParameterDefault(0,0)
+    slicer.mrmlScene.RemoveNode(newNode)
       
 
 #
@@ -257,6 +300,14 @@ class SegmentationQuantificationToolLogic(ScriptedLoadableModuleLogic):
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
+  def __init__(self, parent = None):
+    ScriptedLoadableModuleLogic.__init__(self, parent)
+
+  """def createParameterNode(self):
+    node = ScriptedLoadableModuleLogic.createParameterNode(self)
+    node.SetName(slicer.mrmlScene.GetUniqueNameByString(self.moduleName))
+    return node"""
+
   def getLabelNodeForNode(self, currentNode):
     """Search for the dedicated label image. If none found, return a new one."""
     imageNode = None
@@ -264,7 +315,7 @@ class SegmentationQuantificationToolLogic(ScriptedLoadableModuleLogic):
     scalarVolumes = slicer.mrmlScene.GetNodesByClass('vtkMRMLScalarVolumeNode')
     print('Number of scalar volumes: ' + scalarVolumes.GetNumberOfItems().__str__())
     labelFound = False
-    for idx in xrange(0,scalarVolumes.GetNumberOfItems()):
+    for idx in xrange(0,scalarVolumes.GetNumberOfItems()): #TODO use while loop
       imageNode = scalarVolumes.GetItemAsObject(idx)
       if imageNode.GetName() == (imageName + '_label'):
         print('Found dedicated label ' + imageNode.GetName())
@@ -330,6 +381,18 @@ class SegmentationQuantificationToolLogic(ScriptedLoadableModuleLogic):
     if imageNode.GetAttribute('DICOM.MeasurementUnitsCodeValue'):
       units = imageNode.GetAttribute('DICOM.MeasurementUnitsCodeValue')
     return units
+    
+  def calculateOnLabelModified(self, scalarVolume, labelVolume, cliNode, labelValue, meanFlag, varianceFlag, minFlag,
+                        maxFlag, quart1Flag, medianFlag, quart3Flag, upperAdjacentFlag, q1Flag, q2Flag, q3Flag, 
+                        q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag, TLGFlag, SAMFlag, SAMBGFlag, RMSFlag, 
+                        PeakFlag, VolumeFlag):
+    print('      Recalculating QIs')
+    qiLogic = QuantitativeIndicesToolLogic()
+    node = qiLogic.run(scalarVolume,labelVolume,cliNode,labelValue,meanFlag, varianceFlag, minFlag,
+                        maxFlag, quart1Flag, medianFlag, quart3Flag, upperAdjacentFlag, q1Flag, q2Flag, q3Flag, 
+                        q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag, TLGFlag, SAMFlag, SAMBGFlag, RMSFlag, 
+                        PeakFlag, VolumeFlag)
+    return node
   
   def hasImageData(self,volumeNode):
     """This is an example logic method that
