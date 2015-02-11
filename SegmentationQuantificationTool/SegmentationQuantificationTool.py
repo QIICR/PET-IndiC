@@ -17,7 +17,7 @@ class SegmentationQuantificationTool(ScriptedLoadableModule):
     ScriptedLoadableModule.__init__(self, parent)
     self.parent.title = "Segmentation Quantification Tool" # TODO make this more human readable by adding spaces
     self.parent.categories = ["Segmentation"]
-    self.parent.dependencies = []
+    self.parent.dependencies = ["QuantitativeIndicesTool"]
     self.parent.contributors = ["Ethan Ulrich (Univ. of Iowa), Christian Bauer (Univ. of Iowa), Markus van Tol (Univ. of Iowa), Reinhard R. Beichel (Univ. of Iowa), John Buatti (Univ. of Iowa)"] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
     The Segmentation Quantification Tool allows for fast segmentation of regions of interest and calculation of quantitative indices.
@@ -37,7 +37,7 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
     self.logic = SegmentationQuantificationToolLogic()
-    
+
     #
     # Images Area
     #
@@ -185,7 +185,7 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     self.layout.addStretch(1)
 
   def cleanup(self):
-    pass
+    self.editorWidget.toolsColor.colorSpin.disconnect('valueChanged(int)', self.onLabelValueChanged)
 
   def onVolumeSelect(self):
     """Search for the dedicated label image. If none found, create a new one."""
