@@ -12,7 +12,7 @@ class QuantitativeIndicesTool(ScriptedLoadableModule):
     ScriptedLoadableModule.__init__(self, parent)
     parent.title = "Quantitative Indices Tool" # TODO make this more human readable by adding spaces
     parent.categories = ["Quantification"]
-    parent.dependencies = []
+    parent.dependencies = ["QuantitativeIndicesCLI"]
     parent.contributors = ["Ethan Ulrich (University of Iowa), Andrey Fedorov (SPL), Markus van Tol (University of Iowa), Christian Bauer (University of Iowa), Reinhard Beichel (University of Iowa), John Buatti (University of Iowa)"] # replace with "Firstname Lastname (Org)"
     parent.helpText = """
     This extension calculates simple quantitative features from a grayscale volume and label map.\n
