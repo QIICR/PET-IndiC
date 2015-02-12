@@ -42,6 +42,8 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     for sliceNode in sliceNodes:
       sliceNodes[sliceNode].UseLabelOutlineOn()
 
+    self.volumeDictionary = {}
+
     #
     # Images Area
     #
@@ -197,6 +199,8 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       imageNode = None
       self.labelSelector.setMRMLScene( slicer.mrmlScene )
       currentNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
+      if currentNode.GetName() not in self.volumeDictionary:
+        self.volumeDictionary[currentNode.GetName()] = currentNode
       imageNode = self.logic.getLabelNodeForNode(currentNode)
       self.labelSelector.setCurrentNode(imageNode)
       self.unitsFrameLabel.setText('Voxel Units: ' + self.logic.getImageUnits(currentNode))
@@ -247,13 +251,16 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       
   def labelModified(self, caller, event):
     if caller.GetID() == self.labelSelector.currentNodeID:
-      print('   *** GOT EVENT FROM vtkMRMLScalarVolumeNode ***')
-      cliNode = None
-      cliNode = self.logic.calculateOnLabelModified(self.inputSelector.currentNode(), self.labelSelector.currentNode(), None, self.editorWidget.toolsColor.colorSpin.value, self.MeanCheckBox.checked, self.VarianceCheckBox.checked, self.MinCheckBox.checked, self.MaxCheckBox.checked, self.Quart1CheckBox.checked, self.MedianCheckBox.checked, self.Quart3CheckBox.checked, self.UpperAdjacentCheckBox.checked, self.Q1CheckBox.checked, self.Q2CheckBox.checked, self.Q3CheckBox.checked, self.Q4CheckBox.checked, self.Gly1CheckBox.checked, self.Gly2CheckBox.checked, self.Gly3CheckBox.checked, self.Gly4CheckBox.checked, self.TLGCheckBox.checked, self.SAMCheckBox.checked, self.SAMBGCheckBox.checked, self.RMSCheckBox.checked, self.PeakCheckBox.checked, self.VolumeCheckBox.checked)
-      if cliNode:
-        self.writeResults(cliNode)
+      if self.editorWidget.toolsColor.colorSpin.value > 0:
+        print('   *** GOT EVENT FROM vtkMRMLScalarVolumeNode ***')
+        cliNode = None
+        cliNode = self.logic.calculateOnLabelModified(self.inputSelector.currentNode(), self.labelSelector.currentNode(), None, self.editorWidget.toolsColor.colorSpin.value, self.MeanCheckBox.checked, self.VarianceCheckBox.checked, self.MinCheckBox.checked, self.MaxCheckBox.checked, self.Quart1CheckBox.checked, self.MedianCheckBox.checked, self.Quart3CheckBox.checked, self.UpperAdjacentCheckBox.checked, self.Q1CheckBox.checked, self.Q2CheckBox.checked, self.Q3CheckBox.checked, self.Q4CheckBox.checked, self.Gly1CheckBox.checked, self.Gly2CheckBox.checked, self.Gly3CheckBox.checked, self.Gly4CheckBox.checked, self.TLGCheckBox.checked, self.SAMCheckBox.checked, self.SAMBGCheckBox.checked, self.RMSCheckBox.checked, self.PeakCheckBox.checked, self.VolumeCheckBox.checked)
+        if cliNode:
+          self.writeResults(cliNode)
+        else:
+          print('ERROR: could not read output of Quantitative Indices Calculator')
       else:
-        print('ERROR: could not read output of Quantitative Indices Calculator')
+        self.resultsFrameLabel.setText("")
       
   def onLabelValueChanged(self, label):
     print('   *** Color Spin Box changed to label: ' + str(label) + ' ***')
