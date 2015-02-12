@@ -38,6 +38,10 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     ScriptedLoadableModuleWidget.setup(self)
     self.logic = SegmentationQuantificationToolLogic()
 
+    sliceNodes = slicer.util.getNodes('vtkMRMLSliceNode*')
+    for sliceNode in sliceNodes:
+      sliceNodes[sliceNode].UseLabelOutlineOn()
+
     #
     # Images Area
     #
@@ -202,18 +206,14 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       selNode.SetReferenceActiveVolumeID(currentNode.GetID())
       selNode.SetReferenceActiveLabelVolumeID(imageNode.GetID())
       appLogic.PropagateVolumeSelection()
-
-      # TODO figure out how to observe only image data changes,
-      # currently this is also triggered when the image name changes      
-      imageNode.AddObserver('ModifiedEvent', self.labelModified)
-      #imageNode.AddObserver('ImageDataModifiedEvent', self.labelModified)
       
-      r = slicer.util.getNode("vtkMRMLSliceNodeRed")
-      r.UseLabelOutlineOn()
-      y = slicer.util.getNode("vtkMRMLSliceNodeYellow")
-      y.UseLabelOutlineOn()
-      g = slicer.util.getNode("vtkMRMLSliceNodeGreen")
-      g.UseLabelOutlineOn()
+      # TODO figure out how to observe only image data changes,
+      # currently this is also triggered when the image name changes
+      imageNode.AddObserver('ModifiedEvent', self.labelModified)
+      #if not imageNode.HasObserver('ModifiedEvent'):
+        #imageNode.AddObserver('ModifiedEvent', self.labelModified)
+        #imageNode.AddObserver('ImageDataModifiedEvent', self.labelModified)
+      
       self.preset1Button.setEnabled(1)
       self.preset2Button.setEnabled(1)
       self.preset3Button.setEnabled(1)
@@ -223,6 +223,7 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       self.preset2Button.setEnabled(0)
       self.preset3Button.setEnabled(0)
       self.preset4Button.setEnabled(0)
+    self.resultsFrameLabel.setText("")
       
 
   def onPreset1Button(self):
