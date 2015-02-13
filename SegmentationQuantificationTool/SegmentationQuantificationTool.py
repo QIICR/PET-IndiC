@@ -196,27 +196,39 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
   def onVolumeSelect(self):
     """Search for the dedicated label image. If none found, create a new one."""
     if self.inputSelector.currentNode():
-      imageNode = None
+      labelNode = None
       self.labelSelector.setMRMLScene( slicer.mrmlScene )
-      currentNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
-      if currentNode.GetName() not in self.volumeDictionary:
-        self.volumeDictionary[currentNode.GetName()] = currentNode
-      imageNode = self.logic.getLabelNodeForNode(currentNode)
-      self.labelSelector.setCurrentNode(imageNode)
-      self.unitsFrameLabel.setText('Voxel Units: ' + self.logic.getImageUnits(currentNode))
+      volumeNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
+      labelNode = self.logic.getLabelNodeForNode(volumeNode)
+      if volumeNode.GetName() not in self.volumeDictionary:
+        self.volumeDictionary[volumeNode.GetName()] = volumeNode
+        volumeNode.labelNode = labelNode
+        volumeNode.labels = [0]
+      if not hasattr(volumeNode, 'labelNode'):
+        volumeNode.labelNode = labelNode
+        volumeNode.labels = [0]
+        stataccum = vtk.vtkImageAccumulate()
+        stataccum.SetInputData(self.labelNode.GetImageData())
+        stataccum.Update()
+        lo = int(stataccum.GetMin()[0])
+        hi = int(stataccum.GetMax()[0])
+        for value in xrange(lo,hi+1):
+          volumeNode.labels.append(value)
+      self.labelSelector.setCurrentNode(labelNode)
+      self.unitsFrameLabel.setText('Voxel Units: ' + self.logic.getImageUnits(volumeNode))
         
       appLogic = slicer.app.applicationLogic()
       selNode = appLogic.GetSelectionNode()
-      selNode.SetReferenceActiveVolumeID(currentNode.GetID())
-      selNode.SetReferenceActiveLabelVolumeID(imageNode.GetID())
+      selNode.SetReferenceActiveVolumeID(volumeNode.GetID())
+      selNode.SetReferenceActiveLabelVolumeID(labelNode.GetID())
       appLogic.PropagateVolumeSelection()
       
       # TODO figure out how to observe only image data changes,
       # currently this is also triggered when the image name changes
-      imageNode.AddObserver('ModifiedEvent', self.labelModified)
-      #if not imageNode.HasObserver('ModifiedEvent'):
-        #imageNode.AddObserver('ModifiedEvent', self.labelModified)
-        #imageNode.AddObserver('ImageDataModifiedEvent', self.labelModified)
+      labelNode.AddObserver('ModifiedEvent', self.labelModified)
+      #if not labelNode.HasObserver('ModifiedEvent'):
+        #labelNode.AddObserver('ModifiedEvent', self.labelModified)
+        #labelNode.AddObserver('ImageDataModifiedEvent', self.labelModified)
       
       self.preset1Button.setEnabled(1)
       self.preset2Button.setEnabled(1)
@@ -251,10 +263,15 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       
   def labelModified(self, caller, event):
     if caller.GetID() == self.labelSelector.currentNodeID:
-      if self.editorWidget.toolsColor.colorSpin.value > 0:
+      volumeNode = self.inputSelector.currentNode()
+      labelNode = self.labelSelector.currentNode()
+      labelValue = self.editorWidget.toolsColor.colorSpin.value
+      if labelValue > 0:
         print('   *** GOT EVENT FROM vtkMRMLScalarVolumeNode ***')
+        if labelValue not in volumeNode.labels:
+          volumeNode.labels.append(labelValue)
         cliNode = None
-        cliNode = self.logic.calculateOnLabelModified(self.inputSelector.currentNode(), self.labelSelector.currentNode(), None, self.editorWidget.toolsColor.colorSpin.value, self.MeanCheckBox.checked, self.VarianceCheckBox.checked, self.MinCheckBox.checked, self.MaxCheckBox.checked, self.Quart1CheckBox.checked, self.MedianCheckBox.checked, self.Quart3CheckBox.checked, self.UpperAdjacentCheckBox.checked, self.Q1CheckBox.checked, self.Q2CheckBox.checked, self.Q3CheckBox.checked, self.Q4CheckBox.checked, self.Gly1CheckBox.checked, self.Gly2CheckBox.checked, self.Gly3CheckBox.checked, self.Gly4CheckBox.checked, self.TLGCheckBox.checked, self.SAMCheckBox.checked, self.SAMBGCheckBox.checked, self.RMSCheckBox.checked, self.PeakCheckBox.checked, self.VolumeCheckBox.checked)
+        cliNode = self.logic.calculateOnLabelModified(volumeNode, labelNode, None, labelValue, self.MeanCheckBox.checked, self.VarianceCheckBox.checked, self.MinCheckBox.checked, self.MaxCheckBox.checked, self.Quart1CheckBox.checked, self.MedianCheckBox.checked, self.Quart3CheckBox.checked, self.UpperAdjacentCheckBox.checked, self.Q1CheckBox.checked, self.Q2CheckBox.checked, self.Q3CheckBox.checked, self.Q4CheckBox.checked, self.Gly1CheckBox.checked, self.Gly2CheckBox.checked, self.Gly3CheckBox.checked, self.Gly4CheckBox.checked, self.TLGCheckBox.checked, self.SAMCheckBox.checked, self.SAMBGCheckBox.checked, self.RMSCheckBox.checked, self.PeakCheckBox.checked, self.VolumeCheckBox.checked)
         if cliNode:
           self.writeResults(cliNode)
         else:
@@ -264,24 +281,28 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       
   def onLabelValueChanged(self, label):
     print('   *** Color Spin Box changed to label: ' + str(label) + ' ***')
+    if label > 0:
+      if label in self.inputSelector.currentNode().labels:
+        cliNode = None
+        cliNode = self.logic.calculateOnLabelModified(self.inputSelector.currentNode(), self.labelSelector.currentNode(), None, label, self.MeanCheckBox.checked, self.VarianceCheckBox.checked, self.MinCheckBox.checked, self.MaxCheckBox.checked, self.Quart1CheckBox.checked, self.MedianCheckBox.checked, self.Quart3CheckBox.checked, self.UpperAdjacentCheckBox.checked, self.Q1CheckBox.checked, self.Q2CheckBox.checked, self.Q3CheckBox.checked, self.Q4CheckBox.checked, self.Gly1CheckBox.checked, self.Gly2CheckBox.checked, self.Gly3CheckBox.checked, self.Gly4CheckBox.checked, self.TLGCheckBox.checked, self.SAMCheckBox.checked, self.SAMBGCheckBox.checked, self.RMSCheckBox.checked, self.PeakCheckBox.checked, self.VolumeCheckBox.checked)
+        if cliNode:
+          self.writeResults(cliNode)
+        else:
+          print('ERROR: could not read output of Quantitative Indices Calculator')
+      else:
+        self.resultsFrameLabel.setText("")
+    else:
+      self.resultsFrameLabel.setText("")
     
   def writeResults(self, vtkMRMLCommandLineModuleNode):
     """ Creates an output text to display on the screen."""
     newNode = vtkMRMLCommandLineModuleNode
     labelValue = int(self.editorWidget.toolsColor.colorSpin.value)
-    #oldNode = self.cliNodes[labelValue]
     resultText = ''
-    #for i in xrange(0,22):
     for i in xrange(0,24):
       newResult = newNode.GetParameterDefault(3,i)
       if (newResult != '--'):
-        #oldResult = oldNode.GetParameterDefault(3,i)
-        #feature = oldNode.GetParameterName(3,i)
         feature = newNode.GetParameterName(3,i)
-        #if (oldResult == '--'):
-        #  flagName = oldNode.GetParameterName(2,i)
-        #  oldNode.SetParameterAsString(feature,newResult)
-        #  oldNode.SetParameterAsString(flagName,'true')
         feature = feature.replace('_s',':\t')
         feature = feature.replace('_',' ')
         if len(feature) < 14:
