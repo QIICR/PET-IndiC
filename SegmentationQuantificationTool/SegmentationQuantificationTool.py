@@ -185,13 +185,17 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     self.preset2Button.connect('clicked(bool)',self.onPreset2Button)
     self.preset3Button.connect('clicked(bool)',self.onPreset3Button)
     self.preset4Button.connect('clicked(bool)',self.onPreset4Button)
-    self.editorWidget.toolsColor.colorSpin.connect('valueChanged(int)', self.onLabelValueChanged)
+    self.editorWidget.toolsColor.colorSpin.connect('valueChanged(int)', self.calculateIndicesFromCurrentLabel)
 
     # Add vertical spacer
     self.layout.addStretch(1)
 
   def cleanup(self):
-    self.editorWidget.toolsColor.colorSpin.disconnect('valueChanged(int)', self.onLabelValueChanged)
+    self.editorWidget.toolsColor.colorSpin.disconnect('valueChanged(int)', self.calculateIndicesFromCurrentLabel)
+    for volume in self.volumeDictionary:
+      labelNode = self.volumeDictionary[volume].labelNode
+      print('\nRemoving observer tag ' + str(self.volumeDictionary[volume].observerTag))
+      labelNode.RemoveObserver(self.volumeDictionary[volume].observerTag)
 
   def onVolumeSelect(self):
     """Search for the dedicated label image. If none found, create a new one."""
@@ -200,20 +204,22 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       self.labelSelector.setMRMLScene( slicer.mrmlScene )
       volumeNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
       labelNode = self.logic.getLabelNodeForNode(volumeNode)
-      if volumeNode.GetName() not in self.volumeDictionary:
+      """if volumeNode.GetName() not in self.volumeDictionary:
         self.volumeDictionary[volumeNode.GetName()] = volumeNode
         volumeNode.labelNode = labelNode
         volumeNode.labels = [0]
+        labelNode.AddObserver('ModifiedEvent', self.labelModified)"""
       if not hasattr(volumeNode, 'labelNode'):
         volumeNode.labelNode = labelNode
         volumeNode.labels = [0]
         stataccum = vtk.vtkImageAccumulate()
-        stataccum.SetInputData(self.labelNode.GetImageData())
+        stataccum.SetInputData(labelNode.GetImageData())
         stataccum.Update()
         lo = int(stataccum.GetMin()[0])
         hi = int(stataccum.GetMax()[0])
-        for value in xrange(lo,hi+1):
-          volumeNode.labels.append(value)
+        for value in xrange(lo,hi):
+          volumeNode.labels.append(value+1)
+        #labelNode.AddObserver('ModifiedEvent', self.labelModified)
       self.labelSelector.setCurrentNode(labelNode)
       self.unitsFrameLabel.setText('Voxel Units: ' + self.logic.getImageUnits(volumeNode))
         
@@ -225,7 +231,7 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       
       # TODO figure out how to observe only image data changes,
       # currently this is also triggered when the image name changes
-      labelNode.AddObserver('ModifiedEvent', self.labelModified)
+      #labelNode.AddObserver('ModifiedEvent', self.labelModified)
       #if not labelNode.HasObserver('ModifiedEvent'):
         #labelNode.AddObserver('ModifiedEvent', self.labelModified)
         #labelNode.AddObserver('ImageDataModifiedEvent', self.labelModified)
@@ -234,12 +240,20 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       self.preset2Button.setEnabled(1)
       self.preset3Button.setEnabled(1)
       self.preset4Button.setEnabled(1)
+      
+      if volumeNode.GetName() not in self.volumeDictionary:
+        self.volumeDictionary[volumeNode.GetName()] = volumeNode
+        #labelNode.AddObserver('ModifiedEvent', self.labelModified)
+        volumeNode.observerTag = labelNode.AddObserver('ModifiedEvent', self.labelModified)
+        
+      self.calculateIndicesFromCurrentLabel(self.editorWidget.toolsColor.colorSpin.value)
+      
     else:
       self.preset1Button.setEnabled(0)
       self.preset2Button.setEnabled(0)
       self.preset3Button.setEnabled(0)
       self.preset4Button.setEnabled(0)
-    self.resultsFrameLabel.setText("")
+    #self.resultsFrameLabel.setText("")
       
 
   def onPreset1Button(self):
@@ -267,28 +281,34 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       labelNode = self.labelSelector.currentNode()
       labelValue = self.editorWidget.toolsColor.colorSpin.value
       if labelValue > 0:
-        print('   *** GOT EVENT FROM vtkMRMLScalarVolumeNode ***')
-        if labelValue not in volumeNode.labels:
-          volumeNode.labels.append(labelValue)
-        cliNode = None
-        cliNode = self.logic.calculateOnLabelModified(volumeNode, labelNode, None, labelValue, self.MeanCheckBox.checked, self.VarianceCheckBox.checked, self.MinCheckBox.checked, self.MaxCheckBox.checked, self.Quart1CheckBox.checked, self.MedianCheckBox.checked, self.Quart3CheckBox.checked, self.UpperAdjacentCheckBox.checked, self.Q1CheckBox.checked, self.Q2CheckBox.checked, self.Q3CheckBox.checked, self.Q4CheckBox.checked, self.Gly1CheckBox.checked, self.Gly2CheckBox.checked, self.Gly3CheckBox.checked, self.Gly4CheckBox.checked, self.TLGCheckBox.checked, self.SAMCheckBox.checked, self.SAMBGCheckBox.checked, self.RMSCheckBox.checked, self.PeakCheckBox.checked, self.VolumeCheckBox.checked)
-        if cliNode:
-          self.writeResults(cliNode)
+        if self.inputSelector.currentNode() and self.labelSelector.currentNode():
+          print('   *** GOT EVENT FROM vtkMRMLScalarVolumeNode ***')
+          if labelValue not in volumeNode.labels:
+            volumeNode.labels.append(labelValue)
+          cliNode = None
+          cliNode = self.logic.calculateOnLabelModified(volumeNode, labelNode, None, labelValue, self.MeanCheckBox.checked, self.VarianceCheckBox.checked, self.MinCheckBox.checked, self.MaxCheckBox.checked, self.Quart1CheckBox.checked, self.MedianCheckBox.checked, self.Quart3CheckBox.checked, self.UpperAdjacentCheckBox.checked, self.Q1CheckBox.checked, self.Q2CheckBox.checked, self.Q3CheckBox.checked, self.Q4CheckBox.checked, self.Gly1CheckBox.checked, self.Gly2CheckBox.checked, self.Gly3CheckBox.checked, self.Gly4CheckBox.checked, self.TLGCheckBox.checked, self.SAMCheckBox.checked, self.SAMBGCheckBox.checked, self.RMSCheckBox.checked, self.PeakCheckBox.checked, self.VolumeCheckBox.checked)
+          if cliNode:
+            self.writeResults(cliNode)
+          else:
+            print('ERROR: could not read output of Quantitative Indices Calculator')
         else:
-          print('ERROR: could not read output of Quantitative Indices Calculator')
+          self.resultsFrameLabel.setText("")
       else:
         self.resultsFrameLabel.setText("")
       
-  def onLabelValueChanged(self, label):
+  def calculateIndicesFromCurrentLabel(self, label):
     print('   *** Color Spin Box changed to label: ' + str(label) + ' ***')
     if label > 0:
-      if label in self.inputSelector.currentNode().labels:
-        cliNode = None
-        cliNode = self.logic.calculateOnLabelModified(self.inputSelector.currentNode(), self.labelSelector.currentNode(), None, label, self.MeanCheckBox.checked, self.VarianceCheckBox.checked, self.MinCheckBox.checked, self.MaxCheckBox.checked, self.Quart1CheckBox.checked, self.MedianCheckBox.checked, self.Quart3CheckBox.checked, self.UpperAdjacentCheckBox.checked, self.Q1CheckBox.checked, self.Q2CheckBox.checked, self.Q3CheckBox.checked, self.Q4CheckBox.checked, self.Gly1CheckBox.checked, self.Gly2CheckBox.checked, self.Gly3CheckBox.checked, self.Gly4CheckBox.checked, self.TLGCheckBox.checked, self.SAMCheckBox.checked, self.SAMBGCheckBox.checked, self.RMSCheckBox.checked, self.PeakCheckBox.checked, self.VolumeCheckBox.checked)
-        if cliNode:
-          self.writeResults(cliNode)
+      if self.inputSelector.currentNode() and self.labelSelector.currentNode():
+        if label in self.inputSelector.currentNode().labels:
+          cliNode = None
+          cliNode = self.logic.calculateOnLabelModified(self.inputSelector.currentNode(), self.labelSelector.currentNode(), None, label, self.MeanCheckBox.checked, self.VarianceCheckBox.checked, self.MinCheckBox.checked, self.MaxCheckBox.checked, self.Quart1CheckBox.checked, self.MedianCheckBox.checked, self.Quart3CheckBox.checked, self.UpperAdjacentCheckBox.checked, self.Q1CheckBox.checked, self.Q2CheckBox.checked, self.Q3CheckBox.checked, self.Q4CheckBox.checked, self.Gly1CheckBox.checked, self.Gly2CheckBox.checked, self.Gly3CheckBox.checked, self.Gly4CheckBox.checked, self.TLGCheckBox.checked, self.SAMCheckBox.checked, self.SAMBGCheckBox.checked, self.RMSCheckBox.checked, self.PeakCheckBox.checked, self.VolumeCheckBox.checked)
+          if cliNode:
+            self.writeResults(cliNode)
+          else:
+            print('ERROR: could not read output of Quantitative Indices Calculator')
         else:
-          print('ERROR: could not read output of Quantitative Indices Calculator')
+          self.resultsFrameLabel.setText("")
       else:
         self.resultsFrameLabel.setText("")
     else:
