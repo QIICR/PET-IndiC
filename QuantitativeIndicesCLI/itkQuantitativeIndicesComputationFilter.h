@@ -46,10 +46,10 @@ public:
   itkSetMacro(CurrentLabel, LabelType);
   itkGetMacro(CurrentLabel, LabelType);
 
-  itkGetMacro(MaximumValue, PixelType);
+  itkGetMacro(MaximumValue, double);
   itkGetMacro(AverageValue, double);
   itkGetMacro(RMSValue, double);
-  itkGetMacro(MinimumValue, PixelType);
+  itkGetMacro(MinimumValue, double);
   itkGetMacro(PeakValue, double);
   itkGetMacro(TotalLesionGlycolysis, double);
   itkGetMacro(SegmentedVolume, double);
@@ -91,7 +91,7 @@ private:
   LabelType m_CurrentLabel;
 
   /** The maximum segmented value.  */
-  PixelType m_MaximumValue;
+  double m_MaximumValue;
   /** The average segmented value.  */
   double m_AverageValue;
   /** The root-mean-square segmented value */
@@ -99,7 +99,7 @@ private:
   /** The median segmented value.  */
   double m_MedianValue;
   /** The minimum segmented value.  */
-  PixelType m_MinimumValue;
+  double m_MinimumValue;
   /** The peak segmented value.  */
   double m_PeakValue;
   /** The location of the peak.  */

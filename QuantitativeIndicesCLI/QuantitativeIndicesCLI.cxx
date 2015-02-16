@@ -79,65 +79,109 @@ int main( int argc, char * argv[] )
     {
       qiCompute->CalculateMean();
       if(Mean){
-        writeFile << "Mean_s = " << (double) qiCompute->GetAverageValue() << endl;
-        cout << "Mean: " << (double) qiCompute->GetAverageValue() << endl;
+        double mean = qiCompute->GetAverageValue();
+        if(!isnan(mean)){
+          writeFile << "Mean_s = " << mean << endl;
+          cout << "Mean: " << mean << endl;
+        }
       }
       if(RMS){
-        writeFile << "RMS_s = " << (double) qiCompute->GetRMSValue() << endl;
-        cout << "RMS: " << (double) qiCompute->GetRMSValue() << endl;
+        double rms = qiCompute->GetRMSValue();
+        if(!isnan(rms)){
+          writeFile << "RMS_s = " << rms << endl;
+          cout << "RMS: " << rms << endl;
+        }
       }
       if(Variance){
         double var = (double) qiCompute->GetVariance();
-        writeFile << "Variance_s = " << var << endl;
-        cout << "Variance: " << var << endl;
+        if(!isnan(var)){
+          writeFile << "Variance_s = " << var << endl;
+          cout << "Variance: " << var << endl;
+        }
       }
       if(Max){
-        writeFile << "Max_s = " << (double) qiCompute->GetMaximumValue() << endl;
-        cout << "Max: " << (double) qiCompute->GetMaximumValue() << endl;
+        double max = qiCompute->GetMaximumValue();
+        if(!isnan(max)){
+          writeFile << "Max_s = " << max << endl;
+          cout << "Max: " << max << endl;
+        }
       }
       if(Min){
-        writeFile << "Min_s = " << (double) qiCompute->GetMinimumValue() << endl;
-        cout << "Min: " << (double) qiCompute->GetMinimumValue() << endl;
+        double min = qiCompute->GetMinimumValue();
+        if(!isnan(min)){
+          writeFile << "Min_s = " << min << endl;
+          cout << "Min: " << min << endl;
+        }
       }
       if(Volume){
-        writeFile << "Volume_s = " << (double) qiCompute->GetSegmentedVolume() * 0.001 << endl;
-        cout << "Volume: " << (double) qiCompute->GetSegmentedVolume() * 0.001 << endl;
+        double vol = qiCompute->GetSegmentedVolume();
+        if(!isnan(vol)){
+          writeFile << "Volume_s = " << vol * 0.001 << endl;
+          cout << "Volume: " << vol * 0.001 << endl;
+        }
       }
       if(TLG){
-        writeFile << "TLG_s = " << (double) qiCompute->GetTotalLesionGlycolysis() * 0.001 << endl;
-        cout << "TLG: " << (double) qiCompute->GetTotalLesionGlycolysis() * 0.001 << endl;
+        double tlg = qiCompute->GetTotalLesionGlycolysis();
+        if(!isnan(tlg)){
+          writeFile << "TLG_s = " << tlg * 0.001 << endl;
+          cout << "TLG: " << tlg * 0.001 << endl;
+        }
       }
       if(Glycolysis_Q1){
-        writeFile << "Glycolysis_Q1_s = " << (double) qiCompute->GetGly1() * 0.001 << endl;
-        cout << "Glycolysis Q1: " << (double) qiCompute->GetGly1() * 0.001 << endl;
+        double gly1 = qiCompute->GetGly1();
+        if(!isnan(gly1)){
+          writeFile << "Glycolysis_Q1_s = " << gly1 * 0.001 << endl;
+          cout << "Glycolysis Q1: " << gly1 * 0.001 << endl;
+        }
       }
       if(Glycolysis_Q2){
-        writeFile << "Glycolysis_Q2_s = " << (double) qiCompute->GetGly2() * 0.001 << endl;
-        cout << "Glycolysis Q2: " << (double) qiCompute->GetGly2() * 0.001 << endl;
+        double gly2 = qiCompute->GetGly2();
+        if(!isnan(gly2)){
+          writeFile << "Glycolysis_Q2_s = " << gly2 * 0.001 << endl;
+          cout << "Glycolysis Q2: " << gly2 * 0.001 << endl;
+        }
       }
       if(Glycolysis_Q3){
-        writeFile << "Glycolysis_Q3_s = " << (double) qiCompute->GetGly3() * 0.001 << endl;
-        cout << "Glycolysis Q3: " << (double) qiCompute->GetGly3() * 0.001 << endl;
+        double gly3 = qiCompute->GetGly3();
+        if(!isnan(gly3)){
+          writeFile << "Glycolysis_Q3_s = " << gly3 * 0.001 << endl;
+          cout << "Glycolysis Q3: " << gly3 * 0.001 << endl;
+        }
       }
       if(Glycolysis_Q4){
-        writeFile << "Glycolysis_Q4_s = " << (double) qiCompute->GetGly4() * 0.001 << endl;
-        cout << "Glycolysis Q4: " << (double) qiCompute->GetGly4() * 0.001 << endl;
+        double gly4 = qiCompute->GetGly4();
+        if(!isnan(gly4)){
+          writeFile << "Glycolysis_Q4_s = " << gly4 * 0.001 << endl;
+          cout << "Glycolysis Q4: " << gly4 * 0.001 << endl;
+        }
       }
       if(Q1_Distribution){
-        writeFile << "Q1_Distribution_s = " << (double) qiCompute->GetQ1() << endl;
-        cout << "Q1 Distribution: " << (double) qiCompute->GetQ1() << endl;
+        double q1 = qiCompute->GetQ1();
+        if(!isnan(q1)){
+          writeFile << "Q1_Distribution_s = " << q1 << endl;
+          cout << "Q1 Distribution: " << q1 << endl;
+        }
       }
       if(Q2_Distribution){
-        writeFile << "Q2_Distribution_s = " << (double) qiCompute->GetQ2() << endl;
-        cout << "Q2 Distribution: " << (double) qiCompute->GetQ2() << endl;
+        double q2 = qiCompute->GetQ2();
+        if(!isnan(q2)){
+          writeFile << "Q2_Distribution_s = " << q2 << endl;
+          cout << "Q2 Distribution: " << q2 << endl;
+        }
       }
       if(Q3_Distribution){
-        writeFile << "Q3_Distribution_s = " << (double) qiCompute->GetQ3() << endl;
-        cout << "Q3 Distribution: " << (double) qiCompute->GetQ3() << endl;
+        double q3 = qiCompute->GetQ3();
+        if(!isnan(q3)){
+          writeFile << "Q3_Distribution_s = " << q3 << endl;
+          cout << "Q3 Distribution: " << q3 << endl;
+        }
       }
       if(Q4_Distribution){
-        writeFile << "Q4_Distribution_s = " << (double) qiCompute->GetQ4() << endl;
-        cout << "Q4 Distribution: " << (double) qiCompute->GetQ4() << endl;
+        double q4 = qiCompute->GetQ4();
+        if(!isnan(q4)){
+          writeFile << "Q4_Distribution_s = " << q4 << endl;
+          cout << "Q4 Distribution: " << q4 << endl;
+        }
       }
     }
 
@@ -145,20 +189,32 @@ int main( int argc, char * argv[] )
     {
       qiCompute->CalculateQuartiles();
       if(First_Quartile){
-        writeFile << "First_Quartile_s = " << (double) qiCompute->GetFirstQuartileValue() << endl;
-        cout << "1st Quartile: " << (double) qiCompute->GetFirstQuartileValue() << endl;
+        double quart1 = qiCompute->GetFirstQuartileValue();
+        if(!isnan(quart1)){
+          writeFile << "First_Quartile_s = " << quart1 << endl;
+          cout << "1st Quartile: " << quart1 << endl;
+        }
       }
       if(Median){
-        writeFile << "Median_s = " << (double) qiCompute->GetMedianValue() << endl;
-        cout << "Median: " << (double) qiCompute->GetMedianValue() << endl;
+        double median = qiCompute->GetMedianValue();
+        if(!isnan(median)){
+          writeFile << "Median_s = " << median << endl;
+          cout << "Median: " << median << endl;
+        }
       }
       if(Third_Quartile){
-        writeFile << "Third_Quartile_s = " << (double) qiCompute->GetThirdQuartileValue() << endl;
-        cout << "3rd Quartile: " << (double) qiCompute->GetThirdQuartileValue() << endl;
+        double quart3 = qiCompute->GetThirdQuartileValue();
+        if(!isnan(quart3)){
+          writeFile << "Third_Quartile_s = " << quart3 << endl;
+          cout << "3rd Quartile: " << quart3 << endl;
+        }
       }
       if(Upper_Adjacent){
-        writeFile << "Upper_Adjacent_s = " << (double) qiCompute->GetUpperAdjacentValue() << endl;
-        cout << "Upper Adjacent: " << (double) qiCompute->GetUpperAdjacentValue() << endl;
+        double adj = qiCompute->GetUpperAdjacentValue();
+        if(!isnan(adj)){
+          writeFile << "Upper_Adjacent_s = " << adj << endl;
+          cout << "Upper Adjacent: " << adj << endl;
+        }
       }
     }
 
@@ -166,12 +222,18 @@ int main( int argc, char * argv[] )
     {
       qiCompute->CalculateSAM();
       if(SAM){
-        writeFile << "SAM_s = " << (double) qiCompute->GetSAMValue() * 0.001 << endl;
-        cout << "SAM: " << (double) qiCompute->GetSAMValue() * 0.001 << endl;
+        double sam = qiCompute->GetSAMValue();
+        if(!isnan(sam)){
+          writeFile << "SAM_s = " << sam * 0.001 << endl;
+          cout << "SAM: " << sam * 0.001 << endl;
+        }
       }
       if(SAM_Background){
-        writeFile << "SAM_Background_s = " << (double) qiCompute->GetSAMBackground() << endl;
-        cout << "SAM mean background: " << (double) qiCompute->GetSAMBackground() << endl;
+        double sambg = qiCompute->GetSAMBackground();
+        if(!isnan(sambg)){
+          writeFile << "SAM_Background_s = " << sambg << endl;
+          cout << "SAM mean background: " << sambg << endl;
+        }
       }
     }
 

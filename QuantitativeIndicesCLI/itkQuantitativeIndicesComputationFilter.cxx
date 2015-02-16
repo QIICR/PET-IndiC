@@ -306,24 +306,42 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
 
   d_variance /= (voxelCount);
 
-
-  //Set the class variables to the values we've determined.
-  m_AverageValue = d_averageValue;
-  m_RMSValue = d_rmsValue;
-  m_MinimumValue = (PixelType) d_minimumValue;
-  m_MaximumValue = (PixelType) d_maximumValue;
-  m_SegmentedVolume = d_segmentedVolume;
-  m_TotalLesionGlycolysis = d_totalLesionGly;
-  m_Variance = d_variance;
-  m_Gly1 = d_gly1;
-  m_Gly2 = d_gly2;
-  m_Gly3 = d_gly3;
-  m_Gly4 = d_gly4;
-  m_Q1 = d_q1;
-  m_Q2 = d_q2;
-  m_Q3 = d_q3;
-  m_Q4 = d_q4;
-
+  if(segmentedValues.size()==0)
+  {
+    m_AverageValue = std::numeric_limits<double>::quiet_NaN();
+    m_RMSValue = std::numeric_limits<double>::quiet_NaN();
+    m_MinimumValue = std::numeric_limits<double>::quiet_NaN();
+    m_MaximumValue = std::numeric_limits<double>::quiet_NaN();
+    m_SegmentedVolume = std::numeric_limits<double>::quiet_NaN();
+    m_TotalLesionGlycolysis = std::numeric_limits<double>::quiet_NaN();
+    m_Variance = std::numeric_limits<double>::quiet_NaN();
+    m_Gly1 = std::numeric_limits<double>::quiet_NaN();
+    m_Gly2 = std::numeric_limits<double>::quiet_NaN();
+    m_Gly3 = std::numeric_limits<double>::quiet_NaN();
+    m_Gly4 = std::numeric_limits<double>::quiet_NaN();
+    m_Q1 = std::numeric_limits<double>::quiet_NaN();
+    m_Q2 = std::numeric_limits<double>::quiet_NaN();
+    m_Q3 = std::numeric_limits<double>::quiet_NaN();
+    m_Q4 = std::numeric_limits<double>::quiet_NaN();
+  }
+  else{
+    //Set the class variables to the values we've determined.
+    m_AverageValue = d_averageValue;
+    m_RMSValue = d_rmsValue;
+    m_MinimumValue = d_minimumValue;
+    m_MaximumValue = d_maximumValue;
+    m_SegmentedVolume = d_segmentedVolume;
+    m_TotalLesionGlycolysis = d_totalLesionGly;
+    m_Variance = d_variance;
+    m_Gly1 = d_gly1;
+    m_Gly2 = d_gly2;
+    m_Gly3 = d_gly3;
+    m_Gly4 = d_gly4;
+    m_Q1 = d_q1;
+    m_Q2 = d_q2;
+    m_Q3 = d_q3;
+    m_Q4 = d_q4;
+  }
 }
 
 //----------------------------------------------------------------------------
@@ -421,12 +439,20 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
   }
   else{ d_upperAdjacentValue = d_maximumValue; }
 
-  //Set the class variables to the values we've determined.
-  m_MedianValue = d_medianValue;
-  m_FirstQuartileValue = d_firstQuartileValue;
-  m_ThirdQuartileValue = d_thirdQuartileValue;
-  m_UpperAdjacentValue = d_upperAdjacentValue;
-
+  if(segmentedValues.size()==0)
+  {
+    m_MedianValue = std::numeric_limits<double>::quiet_NaN();
+    m_FirstQuartileValue = std::numeric_limits<double>::quiet_NaN();
+    m_ThirdQuartileValue = std::numeric_limits<double>::quiet_NaN();
+    m_UpperAdjacentValue = std::numeric_limits<double>::quiet_NaN();
+  }
+  else{
+    //Set the class variables to the values we've determined.
+    m_MedianValue = d_medianValue;
+    m_FirstQuartileValue = d_firstQuartileValue;
+    m_ThirdQuartileValue = d_thirdQuartileValue;
+    m_UpperAdjacentValue = d_upperAdjacentValue;
+  }
 }
 
 
@@ -536,10 +562,16 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
   d_SAMBackground = (d_SAM*dilatedSize-d_averageValue*d_segmentedVolume)/(dilatedSize-d_segmentedVolume);
   d_SAM = (d_averageValue-d_SAMBackground)*d_segmentedVolume*voxelSize;
 
-  //Set the class variables to the values we've determined.
-  m_SAMValue = d_SAM;
-  m_SAMBackground = d_SAMBackground;
-
+  if(segmentedValues.size()==0)
+  {
+    m_SAMValue = std::numeric_limits<double>::quiet_NaN();
+    m_SAMBackground = std::numeric_limits<double>::quiet_NaN();
+  }
+  else{
+    //Set the class variables to the values we've determined.
+    m_SAMValue = d_SAM;
+    m_SAMBackground = d_SAMBackground;
+  }
 }
 
 
