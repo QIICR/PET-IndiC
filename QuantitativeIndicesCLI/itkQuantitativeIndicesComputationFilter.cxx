@@ -308,21 +308,21 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
 
 
   //Set the class variables to the values we've determined.
-  m_AverageValue = (PixelType) d_averageValue;
-  m_RMSValue = (PixelType) d_rmsValue;
+  m_AverageValue = d_averageValue;
+  m_RMSValue = d_rmsValue;
   m_MinimumValue = (PixelType) d_minimumValue;
   m_MaximumValue = (PixelType) d_maximumValue;
-  m_SegmentedVolume = (float) d_segmentedVolume;
+  m_SegmentedVolume = d_segmentedVolume;
   m_TotalLesionGlycolysis = d_totalLesionGly;
-  m_Variance = (PixelType) d_variance;
+  m_Variance = d_variance;
   m_Gly1 = d_gly1;
   m_Gly2 = d_gly2;
   m_Gly3 = d_gly3;
   m_Gly4 = d_gly4;
-  m_Q1 = (float) d_q1;
-  m_Q2 = (float) d_q2;
-  m_Q3 = (float) d_q3;
-  m_Q4 = (float) d_q4;
+  m_Q1 = d_q1;
+  m_Q2 = d_q2;
+  m_Q3 = d_q3;
+  m_Q4 = d_q4;
 
 }
 
@@ -422,10 +422,10 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
   else{ d_upperAdjacentValue = d_maximumValue; }
 
   //Set the class variables to the values we've determined.
-  m_MedianValue = (PixelType) d_medianValue;
-  m_FirstQuartileValue = (PixelType) d_firstQuartileValue;
-  m_ThirdQuartileValue = (PixelType) d_thirdQuartileValue;
-  m_UpperAdjacentValue = (PixelType) d_upperAdjacentValue;
+  m_MedianValue = d_medianValue;
+  m_FirstQuartileValue = d_firstQuartileValue;
+  m_ThirdQuartileValue = d_thirdQuartileValue;
+  m_UpperAdjacentValue = d_upperAdjacentValue;
 
 }
 
@@ -537,8 +537,8 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
   d_SAM = (d_averageValue-d_SAMBackground)*d_segmentedVolume*voxelSize;
 
   //Set the class variables to the values we've determined.
-  m_SAMValue = (PixelType) d_SAM;
-  m_SAMBackground = (PixelType) d_SAMBackground;
+  m_SAMValue = d_SAM;
+  m_SAMBackground = d_SAMBackground;
 
 }
 
@@ -921,7 +921,7 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
   petResampler->GetOutput()->TransformIndexToPhysicalPoint(highestPeakIndex, highestPeakPoint);
 
   //Set the class variables to the values we've determined.
-  m_PeakValue = (PixelType) d_peakValue;
+  m_PeakValue = d_peakValue;
   m_PeakLocation[0] = highestPeakPoint[0];
   m_PeakLocation[1] = highestPeakPoint[1];
   m_PeakLocation[2] = highestPeakPoint[2];
