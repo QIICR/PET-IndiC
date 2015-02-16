@@ -196,6 +196,13 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       labelNode = self.volumeDictionary[volume].labelNode
       print('\nRemoving observer tag ' + str(self.volumeDictionary[volume].observerTag))
       labelNode.RemoveObserver(self.volumeDictionary[volume].observerTag)
+      # delete the custom attributes on the volume node
+      try:
+        del self.volumeDictionary[volume].labelNode
+        del self.volumeDictionary[volume].observerTag
+        del self.volumeDictionary[volume].labels
+      except AttributeError:
+        pass
 
   def onVolumeSelect(self):
     """Search for the dedicated label image. If none found, create a new one."""
@@ -204,11 +211,6 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       self.labelSelector.setMRMLScene( slicer.mrmlScene )
       volumeNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
       labelNode = self.logic.getLabelNodeForNode(volumeNode)
-      """if volumeNode.GetName() not in self.volumeDictionary:
-        self.volumeDictionary[volumeNode.GetName()] = volumeNode
-        volumeNode.labelNode = labelNode
-        volumeNode.labels = [0]
-        labelNode.AddObserver('ModifiedEvent', self.labelModified)"""
       if not hasattr(volumeNode, 'labelNode'):
         volumeNode.labelNode = labelNode
         volumeNode.labels = [0]
@@ -219,7 +221,6 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
         hi = int(stataccum.GetMax()[0])
         for value in xrange(lo,hi):
           volumeNode.labels.append(value+1)
-        #labelNode.AddObserver('ModifiedEvent', self.labelModified)
       self.labelSelector.setCurrentNode(labelNode)
       self.unitsFrameLabel.setText('Voxel Units: ' + self.logic.getImageUnits(volumeNode))
         
@@ -243,7 +244,6 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       
       if volumeNode.GetName() not in self.volumeDictionary:
         self.volumeDictionary[volumeNode.GetName()] = volumeNode
-        #labelNode.AddObserver('ModifiedEvent', self.labelModified)
         volumeNode.observerTag = labelNode.AddObserver('ModifiedEvent', self.labelModified)
         
       self.calculateIndicesFromCurrentLabel(self.editorWidget.toolsColor.colorSpin.value)
@@ -469,43 +469,6 @@ class SegmentationQuantificationToolLogic(ScriptedLoadableModuleLogic):
       logging.debug('isValidInputOutputData failed: input and output volume is the same. Create a new volume for output to avoid this error.')
       return False
     return True
-
-  def takeScreenshot(self,name,description,type=-1):
-    # show the message even if not taking a screen shot
-    slicer.util.delayDisplay('Take screenshot: '+description+'.\nResult is available in the Annotations module.', 3000)
-
-    lm = slicer.app.layoutManager()
-    # switch on the type to get the requested window
-    widget = 0
-    if type == slicer.qMRMLScreenShotDialog.FullLayout:
-      # full layout
-      widget = lm.viewport()
-    elif type == slicer.qMRMLScreenShotDialog.ThreeD:
-      # just the 3D window
-      widget = lm.threeDWidget(0).threeDView()
-    elif type == slicer.qMRMLScreenShotDialog.Red:
-      # red slice window
-      widget = lm.sliceWidget("Red")
-    elif type == slicer.qMRMLScreenShotDialog.Yellow:
-      # yellow slice window
-      widget = lm.sliceWidget("Yellow")
-    elif type == slicer.qMRMLScreenShotDialog.Green:
-      # green slice window
-      widget = lm.sliceWidget("Green")
-    else:
-      # default to using the full window
-      widget = slicer.util.mainWindow()
-      # reset the type so that the node is set correctly
-      type = slicer.qMRMLScreenShotDialog.FullLayout
-
-    # grab and convert to vtk image data
-    qpixMap = qt.QPixmap().grabWidget(widget)
-    qimage = qpixMap.toImage()
-    imageData = vtk.vtkImageData()
-    slicer.qMRMLUtils().qImageToVtkImageData(qimage,imageData)
-
-    annotationLogic = slicer.modules.annotations.logic()
-    annotationLogic.CreateSnapShot(name, description, type, 1, imageData)
 
   def run(self, inputVolume, outputVolume, imageThreshold):
     """
