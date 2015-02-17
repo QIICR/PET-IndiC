@@ -628,11 +628,13 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
   //Iterate through the image and label.  Determine values where the label is correct in the process.
   LabelIteratorType laIt(inputLabel, inputLabel->GetLargestPossibleRegion());
   laIt.GoToBegin();
+  bool labelPresent = false;
 
   while (!laIt.IsAtEnd())
   {
     if (laIt.Get() == m_CurrentLabel)
     {
+      labelPresent = true;
       typename ImageType::IndexType currentIndex = laIt.GetIndex();
       for (int i = 0; i < 3; i++)
       {
@@ -643,6 +645,12 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
       }
     }
     ++laIt;
+  }
+  
+  if(!labelPresent)
+  {
+    m_PeakValue = std::numeric_limits<double>::quiet_NaN();
+    return;
   }
 
   //Getting the lowest indices in the input and label images
