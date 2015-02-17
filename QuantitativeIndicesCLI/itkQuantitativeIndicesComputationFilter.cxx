@@ -902,6 +902,7 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
   bool badPoint = true;
   PixelType currentVolume;
   PixelType curPixel;
+  bool somethingFound = false;
 
   //Iterate through the segmented image in the narrowed region
   typename InputNeighborhoodIteratorType::ConstIterator innerIt;
@@ -934,6 +935,7 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
       {
 			  highestPeak = currentVolume;
 			  highestPeakIndex = narrowNeiIt.GetIndex();
+			  somethingFound = true;
       }
 
 		  ++narrowNeiIt;
@@ -953,10 +955,21 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
   petResampler->GetOutput()->TransformIndexToPhysicalPoint(highestPeakIndex, highestPeakPoint);
 
   //Set the class variables to the values we've determined.
-  m_PeakValue = d_peakValue;
-  m_PeakLocation[0] = highestPeakPoint[0];
-  m_PeakLocation[1] = highestPeakPoint[1];
-  m_PeakLocation[2] = highestPeakPoint[2];
+  //m_PeakValue = d_peakValue;
+  //m_PeakLocation[0] = highestPeakPoint[0];
+  //m_PeakLocation[1] = highestPeakPoint[1];
+  //m_PeakLocation[2] = highestPeakPoint[2];
+
+  if(!somethingFound)
+  {
+    m_PeakValue = std::numeric_limits<double>::quiet_NaN();
+  }
+  else{
+    m_PeakValue = d_peakValue;
+    m_PeakLocation[0] = highestPeakPoint[0];
+    m_PeakLocation[1] = highestPeakPoint[1];
+    m_PeakLocation[2] = highestPeakPoint[2];
+  }
 
 }
 
