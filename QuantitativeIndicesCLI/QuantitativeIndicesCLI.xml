@@ -216,12 +216,6 @@
       <description><![CDATA[Mean value in region of interest]]></description>
     </string>
     <string>
-      <name>Variance_s</name>
-      <label>Variance</label>
-      <channel>output</channel>
-      <description><![CDATA[Variance in region of interest]]></description>
-    </string>
-    <string>
       <name>Min_s</name>
       <label>Min</label>
       <channel>output</channel>
@@ -234,16 +228,28 @@
       <description><![CDATA[Maximum value in region of interest]]></description>
     </string>
     <string>
-      <name>RMS_s</name>
-      <label>RMS</label>
+      <name>Peak_s</name>
+      <label>Peak</label>
       <channel>output</channel>
-      <description><![CDATA[Root-mean-square value in region of interest]]></description>
+      <description><![CDATA[Peak value in region of interest]]></description>
     </string>
     <string>
       <name>Volume_s</name>
       <label>Volume</label>
       <channel>output</channel>
       <description><![CDATA[Volume of region of interest]]></description>
+    </string>
+    <string>
+      <name>TLG_s</name>
+      <label>TLG</label>
+      <channel>output</channel>
+      <description><![CDATA[Total lesion glycolysis]]></description>
+    </string>
+    <string>
+      <name>Variance_s</name>
+      <label>Variance</label>
+      <channel>output</channel>
+      <description><![CDATA[Variance in region of interest]]></description>
     </string>
     <string>
       <name>First_Quartile_s</name>
@@ -270,10 +276,10 @@
       <description><![CDATA[Upper adjacent value in region of interest]]></description>
     </string>
     <string>
-      <name>TLG_s</name>
-      <label>TLG</label>
+      <name>RMS_s</name>
+      <label>RMS</label>
       <channel>output</channel>
-      <description><![CDATA[Total lesion glycolysis]]></description>
+      <description><![CDATA[Root-mean-square value in region of interest]]></description>
     </string>
     <string>
       <name>Glycolysis_Q1_s</name>
@@ -334,12 +340,6 @@
       <label>SAM mean background</label>
       <channel>output</channel>
       <description><![CDATA[Standardized added metabolic activity mean background]]></description>
-    </string>
-    <string>
-      <name>Peak_s</name>
-      <label>Peak</label>
-      <channel>output</channel>
-      <description><![CDATA[Peak value in region of interest]]></description>
     </string>
   </parameters>
 </executable>
