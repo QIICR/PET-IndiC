@@ -171,13 +171,23 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     self.layout.addWidget(self.unitsFrame)
     
     #
-    # results frame
+    # results table
     #
-    self.resultsFrame = self.qiWidget.resultsFrame
-    self.resultsFrame.layout().setMargin(2)
-    self.layout.addWidget(self.resultsFrame)
-    self.resultsFrameLabel = self.qiWidget.resultsFrameLabel
-    self.resultsFrame.layout().addWidget(self.resultsFrameLabel)
+    self.resultsTable = qt.QTableWidget()
+    self.resultsTable.visible = False # hide until populated
+    self.resultsTable.setColumnCount(2)
+    self.resultsTable.setColumnWidth(0,170)
+    self.resultsTable.alternatingRowColors = True
+    self.resultsTable.setHorizontalHeaderLabels(['Index','Value'])
+    rowHeader = self.resultsTable.verticalHeader()
+    rowHeader.visible = False
+    font = self.resultsTable.font
+    font.setPointSize(12)
+    self.resultsTable.setFont(font)
+    aiv = qt.QAbstractItemView()
+    self.resultsTable.setEditTriggers(aiv.NoEditTriggers) # disable editing
+    self.layout.addWidget(self.resultsTable)
+    
 
     # connections
     self.inputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onVolumeSelect)
@@ -230,13 +240,6 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       selNode.SetReferenceActiveLabelVolumeID(labelNode.GetID())
       appLogic.PropagateVolumeSelection()
       
-      # TODO figure out how to observe only image data changes,
-      # currently this is also triggered when the image name changes
-      #labelNode.AddObserver('ModifiedEvent', self.labelModified)
-      #if not labelNode.HasObserver('ModifiedEvent'):
-        #labelNode.AddObserver('ModifiedEvent', self.labelModified)
-        #labelNode.AddObserver('ImageDataModifiedEvent', self.labelModified)
-      
       self.preset1Button.setEnabled(1)
       self.preset2Button.setEnabled(1)
       self.preset3Button.setEnabled(1)
@@ -244,6 +247,8 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       
       if volumeNode.GetName() not in self.volumeDictionary:
         self.volumeDictionary[volumeNode.GetName()] = volumeNode
+        # TODO figure out how to observe only image data changes,
+        # currently this is also triggered when the image name changes
         volumeNode.observerTag = labelNode.AddObserver('ModifiedEvent', self.labelModified)
         
       self.calculateIndicesFromCurrentLabel(self.editorWidget.toolsColor.colorSpin.value)
@@ -253,14 +258,14 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       self.preset2Button.setEnabled(0)
       self.preset3Button.setEnabled(0)
       self.preset4Button.setEnabled(0)
-    #self.resultsFrameLabel.setText("")
-      
+      self.resultsTable.visible = False
+            
 
   def onPreset1Button(self):
     if self.inputSelector.currentNode():
       imageNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
       self.logic.presetSUVInvertedGrey(imageNode)
-      
+     
   def onPreset2Button(self):
     if self.inputSelector.currentNode():
       imageNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
@@ -277,61 +282,78 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       
   def labelModified(self, caller, event):
     if caller.GetID() == self.labelSelector.currentNodeID:
+      self.resultsTable.visible = False
       volumeNode = self.inputSelector.currentNode()
       labelNode = self.labelSelector.currentNode()
       labelValue = self.editorWidget.toolsColor.colorSpin.value
       if labelValue > 0:
-        if self.inputSelector.currentNode() and self.labelSelector.currentNode():
+        if volumeNode and labelNode:
           print('   *** GOT EVENT FROM vtkMRMLScalarVolumeNode ***')
           if labelValue not in volumeNode.labels:
             volumeNode.labels.append(labelValue)
           cliNode = None
-          cliNode = self.logic.calculateOnLabelModified(volumeNode, labelNode, None, labelValue, self.MeanCheckBox.checked, self.VarianceCheckBox.checked, self.MinCheckBox.checked, self.MaxCheckBox.checked, self.Quart1CheckBox.checked, self.MedianCheckBox.checked, self.Quart3CheckBox.checked, self.UpperAdjacentCheckBox.checked, self.Q1CheckBox.checked, self.Q2CheckBox.checked, self.Q3CheckBox.checked, self.Q4CheckBox.checked, self.Gly1CheckBox.checked, self.Gly2CheckBox.checked, self.Gly3CheckBox.checked, self.Gly4CheckBox.checked, self.TLGCheckBox.checked, self.SAMCheckBox.checked, self.SAMBGCheckBox.checked, self.RMSCheckBox.checked, self.PeakCheckBox.checked, self.VolumeCheckBox.checked)
+          cliNode = self.calculateIndices(volumeNode, labelNode, None, labelValue)
           if cliNode:
-            self.writeResults(cliNode)
+            self.populateResultsTable(cliNode)
           else:
             print('ERROR: could not read output of Quantitative Indices Calculator')
-        else:
-          self.resultsFrameLabel.setText("")
-      else:
-        self.resultsFrameLabel.setText("")
       
-  def calculateIndicesFromCurrentLabel(self, label):
-    print('   *** Color Spin Box changed to label: ' + str(label) + ' ***')
-    if label > 0:
-      if self.inputSelector.currentNode() and self.labelSelector.currentNode():
-        if label in self.inputSelector.currentNode().labels:
+  def calculateIndicesFromCurrentLabel(self, labelValue):
+    print('   *** Color Spin Box changed to label: ' + str(labelValue) + ' ***')
+    self.resultsTable.visible = False
+    volumeNode = self.inputSelector.currentNode()
+    labelNode = self.labelSelector.currentNode()
+    if labelValue > 0:
+      if volumeNode and labelNode:
+        if labelValue in volumeNode.labels:
           cliNode = None
-          cliNode = self.logic.calculateOnLabelModified(self.inputSelector.currentNode(), self.labelSelector.currentNode(), None, label, self.MeanCheckBox.checked, self.VarianceCheckBox.checked, self.MinCheckBox.checked, self.MaxCheckBox.checked, self.Quart1CheckBox.checked, self.MedianCheckBox.checked, self.Quart3CheckBox.checked, self.UpperAdjacentCheckBox.checked, self.Q1CheckBox.checked, self.Q2CheckBox.checked, self.Q3CheckBox.checked, self.Q4CheckBox.checked, self.Gly1CheckBox.checked, self.Gly2CheckBox.checked, self.Gly3CheckBox.checked, self.Gly4CheckBox.checked, self.TLGCheckBox.checked, self.SAMCheckBox.checked, self.SAMBGCheckBox.checked, self.RMSCheckBox.checked, self.PeakCheckBox.checked, self.VolumeCheckBox.checked)
+          cliNode = self.calculateIndices(volumeNode, labelNode, None, labelValue)
           if cliNode:
-            self.writeResults(cliNode)
+            self.populateResultsTable(cliNode)
           else:
             print('ERROR: could not read output of Quantitative Indices Calculator')
-        else:
-          self.resultsFrameLabel.setText("")
-      else:
-        self.resultsFrameLabel.setText("")
-    else:
-      self.resultsFrameLabel.setText("")
+            
+  def calculateIndices(self, volumeNode, labelNode, cliNode, labelValue):
+    newNode = None
+    newNode = self.logic.calculateOnLabelModified(volumeNode, labelNode, cliNode, labelValue, self.MeanCheckBox.checked, self.VarianceCheckBox.checked, self.MinCheckBox.checked, self.MaxCheckBox.checked, self.Quart1CheckBox.checked, self.MedianCheckBox.checked, self.Quart3CheckBox.checked, self.UpperAdjacentCheckBox.checked, self.Q1CheckBox.checked, self.Q2CheckBox.checked, self.Q3CheckBox.checked, self.Q4CheckBox.checked, self.Gly1CheckBox.checked, self.Gly2CheckBox.checked, self.Gly3CheckBox.checked, self.Gly4CheckBox.checked, self.TLGCheckBox.checked, self.SAMCheckBox.checked, self.SAMBGCheckBox.checked, self.RMSCheckBox.checked, self.PeakCheckBox.checked, self.VolumeCheckBox.checked)
+    return newNode
+
     
-  def writeResults(self, vtkMRMLCommandLineModuleNode):
-    """ Creates an output text to display on the screen."""
+  def populateResultsTable(self, vtkMRMLCommandLineModuleNode):
+    """Reads the output of QuantitativeIndicesCLI and populates the results table"""
     newNode = vtkMRMLCommandLineModuleNode
-    labelValue = int(self.editorWidget.toolsColor.colorSpin.value)
-    resultText = ''
-    for i in xrange(0,24):
+    resultArray = []
+    self.items = []
+    #for i in xrange(0,22):
+    for i in xrange(0,newNode.GetNumberOfParametersInGroup(3)):
       newResult = newNode.GetParameterDefault(3,i)
       if (newResult != '--'):
         feature = newNode.GetParameterName(3,i)
-        feature = feature.replace('_s',':\t')
+        feature = feature.replace('_s','')
         feature = feature.replace('_',' ')
-        if len(feature) < 14:
-          feature = feature + '\t'
-        resultText = resultText + feature + newResult + '\n'
-    self.resultsFrameLabel.setText(resultText)
-    # TODO find a better way to retrieve the software revision
-    # use slicer.modules.QuantitativeIndicesToolWidget.software_version to retrieve
-    self.software_version = newNode.GetParameterDefault(0,0)
+        resultArray.append([feature,newResult])
+    numRows = len(resultArray)
+    self.resultsTable.setRowCount(numRows)
+    for i in xrange(0,numRows):
+      if not self.resultsTable.item(i,0):
+        indexEntry = qt.QTableWidgetItem()
+        indexEntry.setText(resultArray[i][0])
+        self.resultsTable.setItem(i,0,indexEntry)
+        self.items.append(indexEntry)
+      else:
+        indexEntry = self.resultsTable.item(i,0)
+        indexEntry.setText(resultArray[i][0])
+      if not self.resultsTable.item(i,1):
+        valueEntry = qt.QTableWidgetItem()
+        valueEntry.setText(resultArray[i][1])
+        self.resultsTable.setItem(i,1,valueEntry)
+        self.items.append(valueEntry)
+      else:
+        valueEntry = self.resultsTable.item(i,1)
+        valueEntry.setText(resultArray[i][1])
+    rowHeight = self.resultsTable.rowHeight(0)
+    self.resultsTable.setFixedHeight(rowHeight*(numRows+1)+1)
+    self.resultsTable.visible = True
     slicer.mrmlScene.RemoveNode(newNode)
       
 
@@ -362,7 +384,6 @@ class SegmentationQuantificationToolLogic(ScriptedLoadableModuleLogic):
     imageNode = None
     imageName = currentNode.GetName()
     scalarVolumes = slicer.mrmlScene.GetNodesByClass('vtkMRMLScalarVolumeNode')
-    print('Number of scalar volumes: ' + scalarVolumes.GetNumberOfItems().__str__())
     labelFound = False
     for idx in xrange(0,scalarVolumes.GetNumberOfItems()): #TODO use while loop
       imageNode = scalarVolumes.GetItemAsObject(idx)
