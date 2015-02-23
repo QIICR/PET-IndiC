@@ -43,6 +43,7 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       sliceNodes[sliceNode].UseLabelOutlineOn()
 
     self.volumeDictionary = {}
+    self.items = []
 
     #
     # Images Area
@@ -157,7 +158,19 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     self.PeakCheckBox = self.qiWidget.PeakCheckBox
     self.VolumeCheckBox = self.qiWidget.VolumeCheckBox
     self.VolumeCheckBox.checked = True
+    self.selectAllButton = self.qiWidget.selectAllButton
+    self.deselectAllButton = self.qiWidget.deselectAllButton
     self.calculateButton = self.qiWidget.calculateButton
+    self.calculateButton.hide()
+    
+    #
+    # recalculate button
+    #
+    self.recalculateButton = self.qiWidget.calculateButton
+    self.recalculateButton = qt.QPushButton("Recalculate")
+    self.recalculateButton.toolTip = "Recalculate using current quantitative features."
+    self.recalculateButton.enabled = False
+    self.qiWidget.featuresFormLayout.addRow(self.recalculateButton)
     
     #
     # units display
@@ -196,6 +209,31 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     self.preset3Button.connect('clicked(bool)',self.onPreset3Button)
     self.preset4Button.connect('clicked(bool)',self.onPreset4Button)
     self.editorWidget.toolsColor.colorSpin.connect('valueChanged(int)', self.calculateIndicesFromCurrentLabel)
+    self.MeanCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.VarianceCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.MinCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.MaxCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.Quart1CheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.MedianCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.Quart3CheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.UpperAdjacentCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.Q1CheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.Q2CheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.Q3CheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.Q4CheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.Gly1CheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.Gly2CheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.Gly3CheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.Gly4CheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.TLGCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.SAMCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.SAMBGCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.RMSCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.PeakCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.VolumeCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.selectAllButton.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.deselectAllButton.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.recalculateButton.connect('clicked(bool)', self.onRecalculate)
 
     # Add vertical spacer
     self.layout.addStretch(1)
@@ -213,6 +251,7 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
         del self.volumeDictionary[volume].labels
       except AttributeError:
         pass
+    self.items = []
 
   def onVolumeSelect(self):
     """Search for the dedicated label image. If none found, create a new one."""
@@ -312,6 +351,13 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
             self.populateResultsTable(cliNode)
           else:
             print('ERROR: could not read output of Quantitative Indices Calculator')
+  
+  def onFeatureSelectionChanged(self):
+    self.recalculateButton.enabled = True
+    
+  def onRecalculate(self):
+    self.recalculateButton.enabled = False
+    self.calculateIndicesFromCurrentLabel(self.editorWidget.toolsColor.colorSpin.value)
             
   def calculateIndices(self, volumeNode, labelNode, cliNode, labelValue):
     newNode = None
@@ -324,7 +370,6 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     newNode = vtkMRMLCommandLineModuleNode
     resultArray = []
     self.items = []
-    #for i in xrange(0,22):
     for i in xrange(0,newNode.GetNumberOfParametersInGroup(3)):
       newResult = newNode.GetParameterDefault(3,i)
       if (newResult != '--'):
