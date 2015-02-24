@@ -97,14 +97,14 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     self.presetsFrame.layout().setSpacing(0)
     self.presetsFrame.layout().setMargin(0)
     imagesFormLayout.addRow("W/L Presets:", self.presetsFrame)
-    self.preset1Button = qt.QPushButton("Inverted Grey")
-    self.preset1Button.toolTip = "PET SUV image preset (window = 6, level = 3)" 
+    self.preset1Button = qt.QPushButton("FDG PET")
+    self.preset1Button.toolTip = "PET SUV image preset (W/L=6/3)" 
     self.presetsFrame.layout().addWidget(self.preset1Button)
-    self.preset2Button = qt.QPushButton("Rainbow")
-    self.preset2Button.toolTip = "PET SUV image preset (window = 22.6, level = 9.3)" 
+    self.preset2Button = qt.QPushButton("PET Rainbow")
+    self.preset2Button.toolTip = "PET SUV image preset (W/L=22.6/9.3)" 
     self.presetsFrame.layout().addWidget(self.preset2Button)
-    self.preset3Button = qt.QPushButton("Preset 3")
-    self.preset3Button.toolTip = "preset 3 (not implemented)" 
+    self.preset3Button = qt.QPushButton("FLT PET")
+    self.preset3Button.toolTip = "PET SUV image preset (W/L=4/2)" 
     self.presetsFrame.layout().addWidget(self.preset3Button)
     self.preset4Button = qt.QPushButton("Auto")
     self.preset4Button.toolTip = "Automatically determines a window/level based on the dynamic range" 
@@ -200,7 +200,6 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     aiv = qt.QAbstractItemView()
     self.resultsTable.setEditTriggers(aiv.NoEditTriggers) # disable editing
     self.layout.addWidget(self.resultsTable)
-    
 
     # connections
     self.inputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onVolumeSelect)
@@ -312,7 +311,8 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
 
   def onPreset3Button(self):
     if self.inputSelector.currentNode():
-      print('  Preset 3 currently not implemented')
+      imageNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
+      self.logic.presetSUVInvertedGreyFLT(imageNode)
 
   def onPreset4Button(self):
     if self.inputSelector.currentNode():
@@ -330,12 +330,19 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
           print('   *** GOT EVENT FROM vtkMRMLScalarVolumeNode ***')
           if labelValue not in volumeNode.labels:
             volumeNode.labels.append(labelValue)
+          pd = qt.QProgressDialog('Calculating...', 'Cancel', 0, 100, mainWindow())
+          pd.setModal(True)
+          pd.setMinimumDuration(0)
+          pd.show()
+          pd.setValue(1)
+          slicer.app.processEvents()
           cliNode = None
           cliNode = self.calculateIndices(volumeNode, labelNode, None, labelValue)
           if cliNode:
             self.populateResultsTable(cliNode)
           else:
             print('ERROR: could not read output of Quantitative Indices Calculator')
+          pd.setValue(100)
       
   def calculateIndicesFromCurrentLabel(self, labelValue):
     print('   *** Color Spin Box changed to label: ' + str(labelValue) + ' ***')
@@ -345,12 +352,21 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
     if labelValue > 0:
       if volumeNode and labelNode:
         if labelValue in volumeNode.labels:
+          pd = qt.QProgressDialog('Calculating...', 'Cancel', 0, 100, mainWindow())
+          print('after dialog box')
+          pd.setModal(True)
+          pd.setMinimumDuration(0)
+          pd.show()
+          pd.setValue(1)
+          slicer.app.processEvents()
           cliNode = None
+          print('before calculateIndices')
           cliNode = self.calculateIndices(volumeNode, labelNode, None, labelValue)
           if cliNode:
             self.populateResultsTable(cliNode)
           else:
             print('ERROR: could not read output of Quantitative Indices Calculator')
+          pd.setValue(100)
   
   def onFeatureSelectionChanged(self):
     self.recalculateButton.enabled = True
@@ -483,6 +499,14 @@ class SegmentationQuantificationToolLogic(ScriptedLoadableModuleLogic):
     displayNode.SetWindowLevel(22.6,9.3)
     displayNode.SetInterpolate(0)
     displayNode.SetAndObserveColorNodeID('vtkMRMLPETProceduralColorNodePET-Rainbow')
+    
+  def presetSUVInvertedGreyFLT(self, imageNode):
+    print('  Changing W/L to 4/2')
+    displayNode = imageNode.GetVolumeDisplayNode()
+    displayNode.AutoWindowLevelOff()
+    displayNode.SetWindowLevel(4,2)
+    displayNode.SetInterpolate(0)
+    displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
     
   def presetGreyAuto(self, imageNode):
     print('  Automatically determining W/L')
