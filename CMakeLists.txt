@@ -1,15 +1,15 @@
 cmake_minimum_required(VERSION 2.8.9)
 
-project(SegmentationQuantification)
+project(PET-IndiC)
 
 #-----------------------------------------------------------------------------
 # Extension meta-information
-set(EXTENSION_HOMEPAGE "http://www.example.com/Slicer/Extensions/SegmentationQuantification")
+set(EXTENSION_HOMEPAGE "http://www.example.com/Slicer/Extensions/PET-IndiC")
 set(EXTENSION_CATEGORY "Segmentation")
 set(EXTENSION_CONTRIBUTORS "Ethan Ulrich (University of Iowa), Christian Bauer (University of Iowa), Markus van Tol (University of Iowa), Reinhard R. Beichel (University of Iowa), John Buatti (University of Iowa)")
 set(EXTENSION_DESCRIPTION "The Segmentation Quantification tool allows for fast segmentation of regions of interest and calculation of quantitative indices.")
-set(EXTENSION_ICONURL "http://www.example.com/Slicer/Extensions/SegmentationQuantification.png")
-set(EXTENSION_SCREENSHOTURLS "http://www.example.com/Slicer/Extensions/SegmentationQuantification/Screenshots/1.png")
+set(EXTENSION_ICONURL "https://raw.githubusercontent.com/ejulrich/PET-IndiC/master/PET-IndiC.png")
+set(EXTENSION_SCREENSHOTURLS "http://www.example.com/Slicer/Extensions/PET-IndiC/Screenshots/1.png")
 
 #-----------------------------------------------------------------------------
 # Extension dependencies
@@ -18,7 +18,7 @@ include(${Slicer_USE_FILE})
 
 #-----------------------------------------------------------------------------
 # Extension modules
-add_subdirectory(SegmentationQuantificationTool)
+add_subdirectory(PET-IndiC)
 add_subdirectory(QuantitativeIndicesCLI)
 add_subdirectory(QuantitativeIndicesTool)
 
