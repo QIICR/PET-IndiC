@@ -5,38 +5,38 @@ from slicer.ScriptedLoadableModule import *
 import logging
 
 #
-# SegmentationQuantificationTool
+# PETIndiC
 #
 
-class SegmentationQuantificationTool(ScriptedLoadableModule):
+class PETIndiC(ScriptedLoadableModule):
   """Uses ScriptedLoadableModule base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
-    self.parent.title = "Segmentation Quantification Tool" # TODO make this more human readable by adding spaces
+    self.parent.title = "PET-IndiC" # TODO make this more human readable by adding spaces
     self.parent.categories = ["Segmentation"]
     self.parent.dependencies = ["QuantitativeIndicesTool"]
     self.parent.contributors = ["Ethan Ulrich (Univ. of Iowa), Christian Bauer (Univ. of Iowa), Markus van Tol (Univ. of Iowa), Reinhard R. Beichel (Univ. of Iowa), John Buatti (Univ. of Iowa)"] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
-    The Segmentation Quantification Tool allows for fast segmentation of regions of interest and calculation of quantitative indices.
+    The PET-IndiC allows for fast segmentation of regions of interest and calculation of quantitative indices.
     """
     self.parent.acknowledgementText = """
     This work is funded in part by Quantitative Imaging to Assess Response in Cancer Therapy Trials NIH grant U01-CA140206 and Quantitative Image Informatics for Cancer Research (QIICR) NIH grant U24 CA180918.""" # replace with organization, grant and thanks.
 
 #
-# SegmentationQuantificationToolWidget
+# PETIndiCWidget
 #
 
-class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
+class PETIndiCWidget(ScriptedLoadableModuleWidget):
   """Uses ScriptedLoadableModuleWidget base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
-    self.logic = SegmentationQuantificationToolLogic()
+    self.logic = PETIndiCLogic()
 
     sliceNodes = slicer.util.getNodes('vtkMRMLSliceNode*')
     for sliceNode in sliceNodes:
@@ -419,10 +419,10 @@ class SegmentationQuantificationToolWidget(ScriptedLoadableModuleWidget):
       
 
 #
-# SegmentationQuantificationToolLogic
+# PETIndiCLogic
 #
 
-class SegmentationQuantificationToolLogic(ScriptedLoadableModuleLogic):
+class PETIndiCLogic(ScriptedLoadableModuleLogic):
   """This class should implement all the actual
   computation done by your module.  The interface
   should be such that other python code can import
@@ -580,7 +580,7 @@ class SegmentationQuantificationToolLogic(ScriptedLoadableModuleLogic):
     return True
 
 
-class SegmentationQuantificationToolTest(ScriptedLoadableModuleTest):
+class PETIndiCTest(ScriptedLoadableModuleTest):
   """
   This is the test case for your scripted module.
   Uses ScriptedLoadableModuleTest base class, available at:
@@ -596,9 +596,9 @@ class SegmentationQuantificationToolTest(ScriptedLoadableModuleTest):
     """Run as few or as many tests as needed here.
     """
     self.setUp()
-    self.test_SegmentationQuantificationTool1()
+    self.test_PETIndiC1()
 
-  def test_SegmentationQuantificationTool1(self):
+  def test_PETIndiC1(self):
     """ Ideally you should have several levels of tests.  At the lowest level
     tests should exercise the functionality of the logic with different inputs
     (both valid and invalid).  At higher levels your tests should emulate the
@@ -630,6 +630,6 @@ class SegmentationQuantificationToolTest(ScriptedLoadableModuleTest):
     self.delayDisplay('Finished with download and loading')
 
     volumeNode = slicer.util.getNode(pattern="FA")
-    logic = SegmentationQuantificationToolLogic()
+    logic = PETIndiCLogic()
     self.assertTrue( logic.hasImageData(volumeNode) )
     self.delayDisplay('Test passed!')
