@@ -6,6 +6,7 @@
 #include <iostream>
 
 #include "itkQuantitativeIndicesComputationFilter.h"
+#include "itkPluginUtilities.h"
 
 //versioning info
 #include "vtkQuantitativeIndicesExtVersionConfigure.h"
@@ -26,7 +27,9 @@ int main( int argc, char * argv[] )
   typedef itk::ImageFileReader< ImageType >  ReaderType;
   typedef itk::ImageFileReader< LabelImageType > LabelReaderType;
 	ReaderType::Pointer ptImage = ReaderType::New();
+	itk::PluginFilterWatcher watchReader(ptImage, "Read Scalar Volume", CLPProcessInformation);
   LabelReaderType::Pointer labelImage = LabelReaderType::New();
+  itk::PluginFilterWatcher watchLabelReader(labelImage, "Read Label Image", CLPProcessInformation);
 
   ptImage->SetFileName( Grayscale_Image );
   labelImage->SetFileName( Label_Image );
@@ -36,6 +39,7 @@ int main( int argc, char * argv[] )
   //resample the image to the resolution of the label
   typedef itk::ResampleImageFilter<ImageType, ImageType> ResamplerType;
   ResamplerType::Pointer resampler = ResamplerType::New();
+  itk::PluginFilterWatcher watchResampler(resampler, "Resample Image", CLPProcessInformation);
   resampler->SetInput(ptImage->GetOutput());
   resampler->UseReferenceImageOn();
   resampler->SetReferenceImage(labelImage->GetOutput());
@@ -68,6 +72,7 @@ int main( int argc, char * argv[] )
 
   typedef itk::QuantitativeIndicesComputationFilter<ImageType,LabelImageType> QIFilterType;
   QIFilterType::Pointer qiCompute = QIFilterType::New();
+  itk::PluginFilterWatcher watchFilter(qiCompute, "Quantitative Indices Computation", CLPProcessInformation);
   //qiCompute->SetInputImage(ptImage->GetOutput());
   qiCompute->SetInputImage(resampler->GetOutput());
   qiCompute->SetInputLabelImage(labelImage->GetOutput());
