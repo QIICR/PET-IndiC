@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------
-set(MODULE_NAME SegmentationQuantificationTool)
+set(MODULE_NAME PETIndiC)
 
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS
