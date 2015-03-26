@@ -188,10 +188,10 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     #
     self.resultsTable = qt.QTableWidget()
     self.resultsTable.visible = False # hide until populated
-    self.resultsTable.setColumnCount(2)
+    self.resultsTable.setColumnCount(3)
     self.resultsTable.setColumnWidth(0,170)
     self.resultsTable.alternatingRowColors = True
-    self.resultsTable.setHorizontalHeaderLabels(['Index','Value'])
+    self.resultsTable.setHorizontalHeaderLabels(['Index','Value','Units'])
     rowHeader = self.resultsTable.verticalHeader()
     rowHeader.visible = False
     font = self.resultsTable.font
@@ -270,7 +270,13 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
         for value in xrange(lo,hi):
           volumeNode.labels.append(value+1)
       self.labelSelector.setCurrentNode(labelNode)
-      self.unitsFrameLabel.setText('Voxel Units: ' + self.logic.getImageUnits(volumeNode))
+      if self.resultsTable.columnCount != 3:
+        self.resultsTable.setColumnCount(3)
+        self.resultsTable.setHorizontalHeaderLabels(['Index','Value','Units'])
+      units = self.logic.getImageUnits(volumeNode)
+      if units == '(could not retrieve units information)':
+        self.resultsTable.removeColumn(2) # no units information
+      self.unitsFrameLabel.setText('Voxel Units: ' + units)
         
       appLogic = slicer.app.applicationLogic()
       selNode = appLogic.GetSelectionNode()
@@ -412,6 +418,16 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
       else:
         valueEntry = self.resultsTable.item(i,1)
         valueEntry.setText(resultArray[i][1])
+      if self.resultsTable.columnCount == 3:
+        imageUnits = self.unitsFrameLabel.text.replace('Voxel Units: ','')
+        if not self.resultsTable.item(i,2):
+          unitsEntry = qt.QTableWidgetItem()
+          unitsEntry.setText(self.logic.getUnitsForIndex(imageUnits, resultArray[i][0]))
+          self.resultsTable.setItem(i,2,unitsEntry)
+          self.items.append(unitsEntry)
+        else:
+          unitsEntry = self.resultsTable.item(i,2)
+          unitsEntry.setText(self.logic.getUnitsForIndex(imageUnits, resultArray[i][0]))
     rowHeight = self.resultsTable.rowHeight(0)
     self.resultsTable.setFixedHeight(rowHeight*(numRows+1)+1)
     self.resultsTable.visible = True
@@ -532,6 +548,60 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
                         q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag, TLGFlag, SAMFlag, SAMBGFlag, RMSFlag, 
                         PeakFlag, VolumeFlag)
     return node
+    
+  def getUnitsForIndex(self, imageUnits, indexName):
+    """Attempt to interpret units """
+    if imageUnits not in ['{SUVbw}g/ml','{SUVlbm}g/ml','{SUVibw}g/ml']: # TODO '{SUVbsa}cm2/ml'
+      print('WARNING: could not interpret units for '+ indexName +'. Units: '+ imageUnits)
+      return '-'
+    else:
+      if indexName=='Mean':
+        return 'g/ml'
+      elif indexName=='Min':
+        return 'g/ml'
+      elif indexName=='Max':
+        return 'g/ml'
+      elif indexName=='Peak':
+        return 'g/ml'
+      elif indexName=='Volume':
+        return 'cm^3'
+      elif indexName=='TLG':
+        return 'g'
+      elif indexName=='Variance':
+        return '(g/ml)^2'
+      elif indexName=='First Quartile':
+        return 'g/ml'
+      elif indexName=='Median':
+        return 'g/ml'
+      elif indexName=='Third Quartile':
+        return 'g/ml'
+      elif indexName=='Upper Adjacent':
+        return 'g/ml'
+      elif indexName=='RMS':
+        return 'g/ml'
+      elif indexName=='Glycolysis Q1':
+        return 'g'
+      elif indexName=='Glycolysis Q2':
+        return 'g'
+      elif indexName=='Glycolysis Q3':
+        return 'g'
+      elif indexName=='Glycolysis Q4':
+        return 'g'
+      elif indexName=='Q1 Distribution':
+        return ''
+      elif indexName=='Q2 Distribution':
+        return ''
+      elif indexName=='Q3 Distribution':
+        return ''
+      elif indexName=='Q4 Distribution':
+        return ''
+      elif indexName=='SAM':
+        return 'g'
+      elif indexName=='SAM Background':
+        return 'g/ml'
+      else:
+        print('WARNING: could not interpret units for '+ indexName +'. Units: '+ imageUnits)
+        return '-'
   
   def hasImageData(self,volumeNode):
     """This is an example logic method that
