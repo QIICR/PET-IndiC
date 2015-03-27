@@ -241,7 +241,6 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     self.editorWidget.toolsColor.colorSpin.disconnect('valueChanged(int)', self.calculateIndicesFromCurrentLabel)
     for volume in self.volumeDictionary:
       labelNode = self.volumeDictionary[volume].labelNode
-      print('\nRemoving observer tag ' + str(self.volumeDictionary[volume].observerTag))
       labelNode.RemoveObserver(self.volumeDictionary[volume].observerTag)
       # delete the custom attributes on the volume node
       try:
@@ -333,7 +332,6 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
       labelValue = self.editorWidget.toolsColor.colorSpin.value
       if labelValue > 0:
         if volumeNode and labelNode:
-          print('   *** GOT EVENT FROM vtkMRMLScalarVolumeNode ***')
           if labelValue not in volumeNode.labels:
             volumeNode.labels.append(labelValue)
           pd = qt.QProgressDialog('Calculating...', 'Cancel', 0, 100, mainWindow())
@@ -351,7 +349,6 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
           pd.setValue(100)
       
   def calculateIndicesFromCurrentLabel(self, labelValue):
-    print('   *** Color Spin Box changed to label: ' + str(labelValue) + ' ***')
     self.resultsTable.visible = False
     volumeNode = self.inputSelector.currentNode()
     labelNode = self.labelSelector.currentNode()
@@ -359,14 +356,12 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
       if volumeNode and labelNode:
         if labelValue in volumeNode.labels:
           pd = qt.QProgressDialog('Calculating...', 'Cancel', 0, 100, mainWindow())
-          print('after dialog box')
           pd.setModal(True)
           pd.setMinimumDuration(0)
           pd.show()
           pd.setValue(1)
           slicer.app.processEvents()
           cliNode = None
-          print('before calculateIndices')
           cliNode = self.calculateIndices(volumeNode, labelNode, None, labelValue)
           if cliNode:
             self.populateResultsTable(cliNode)
@@ -461,6 +456,7 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
     imageNode = None
     imageName = currentNode.GetName()
     scalarVolumes = slicer.mrmlScene.GetNodesByClass('vtkMRMLScalarVolumeNode')
+    scalarVolumes.UnRegister(slicer.mrmlScene)
     labelFound = False
     for idx in xrange(0,scalarVolumes.GetNumberOfItems()): #TODO use while loop
       imageNode = scalarVolumes.GetItemAsObject(idx)
@@ -471,7 +467,7 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
     if not labelFound:
       print('Creating dedicated label ' + imageName + '_label')
       # TODO find a better way to create a blank label map
-      imageNode = slicer.vtkMRMLScalarVolumeNode()
+      imageNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLScalarVolumeNode())
       newLabelData = vtk.vtkImageData()
       newLabelData.DeepCopy(currentNode.GetImageData())
       ijkToRAS = vtk.vtkMatrix4x4()
@@ -496,7 +492,6 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
        
       imageNode.SetLabelMap(1)
       imageNode.SetName(imageName + '_label')
-      slicer.mrmlScene.AddNode(imageNode)
 
     return imageNode
 
