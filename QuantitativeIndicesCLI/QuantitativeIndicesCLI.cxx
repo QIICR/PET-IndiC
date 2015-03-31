@@ -4,6 +4,7 @@
 #include "itkImageFileReader.h"
 #include "itkResampleImageFilter.h"
 #include <iostream>
+#include <math.h>
 
 #include "itkQuantitativeIndicesComputationFilter.h"
 #include "itkPluginUtilities.h"
