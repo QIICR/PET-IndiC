@@ -8,7 +8,7 @@ set(EXTENSION_HOMEPAGE "http://www.slicer.org/slicerWiki/index.php/Documentation
 set(EXTENSION_CATEGORY "Quantification")
 set(EXTENSION_CONTRIBUTORS "Ethan Ulrich (University of Iowa), Christian Bauer (University of Iowa), Markus van Tol (University of Iowa), Andrey Fedorov (SPL), Reinhard R. Beichel (University of Iowa), John Buatti (University of Iowa)")
 set(EXTENSION_DESCRIPTION "The PET-IndiC allows for fast segmentation of regions of interest and calculation of quantitative indices.")
-set(EXTENSION_ICONURL "https://raw.githubusercontent.com/ejulrich/PET-IndiC/master/PET-IndiC.png")
+set(EXTENSION_ICONURL "https://raw.githubusercontent.com/QIICR/PET-IndiC/master/PET-IndiC.png")
 set(EXTENSION_SCREENSHOTURLS "http://www.slicer.org/slicerWiki/images/3/32/PET-IndiC_Screenshot1.png http://www.slicer.org/slicerWiki/images/8/8b/PET-IndiC_Screenshot3.png http://www.slicer.org/slicerWiki/images/8/8e/PET-IndiC_Screenshot5.png")
 
 #-----------------------------------------------------------------------------
