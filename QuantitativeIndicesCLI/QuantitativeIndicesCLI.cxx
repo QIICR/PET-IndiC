@@ -163,28 +163,28 @@ int main( int argc, char * argv[] )
       if(Q1_Distribution){
         double q1 = qiCompute->GetQ1();
         if(!isnan(q1)){
-          writeFile << "Q1_Distribution_s = " << q1 << endl;
+          writeFile << "Q1_Distribution_s = " << q1 * 100 << endl;
           cout << "Q1 Distribution: " << q1 << endl;
         }
       }
       if(Q2_Distribution){
         double q2 = qiCompute->GetQ2();
         if(!isnan(q2)){
-          writeFile << "Q2_Distribution_s = " << q2 << endl;
+          writeFile << "Q2_Distribution_s = " << q2 * 100 << endl;
           cout << "Q2 Distribution: " << q2 << endl;
         }
       }
       if(Q3_Distribution){
         double q3 = qiCompute->GetQ3();
         if(!isnan(q3)){
-          writeFile << "Q3_Distribution_s = " << q3 << endl;
+          writeFile << "Q3_Distribution_s = " << q3 * 100 << endl;
           cout << "Q3 Distribution: " << q3 << endl;
         }
       }
       if(Q4_Distribution){
         double q4 = qiCompute->GetQ4();
         if(!isnan(q4)){
-          writeFile << "Q4_Distribution_s = " << q4 << endl;
+          writeFile << "Q4_Distribution_s = " << q4 * 100 << endl;
           cout << "Q4 Distribution: " << q4 << endl;
         }
       }

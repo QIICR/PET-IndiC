@@ -186,7 +186,8 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     #
     # results table
     #
-    self.resultsTable = qt.QTableWidget()
+    #self.resultsTable = qt.QTableWidget()
+    self.resultsTable = CustomTableWidget()
     self.resultsTable.visible = False # hide until populated
     self.resultsTable.setColumnCount(3)
     self.resultsTable.setColumnWidth(0,170)
@@ -583,13 +584,13 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
       elif indexName=='Glycolysis Q4':
         return 'g'
       elif indexName=='Q1 Distribution':
-        return ''
+        return '%'
       elif indexName=='Q2 Distribution':
-        return ''
+        return '%'
       elif indexName=='Q3 Distribution':
-        return ''
+        return '%'
       elif indexName=='Q4 Distribution':
-        return ''
+        return '%'
       elif indexName=='SAM':
         return 'g'
       elif indexName=='SAM Background':
@@ -644,6 +645,43 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
 
     return True
 
+
+class CustomTableWidget(qt.QTableWidget):
+  """Allows for copying the table to clipboard"""
+  def __init__(self, parent=None):
+    super(CustomTableWidget, self).__init__(parent)
+    
+  def keyPressEvent(self, event):
+    if event.matches(qt.QKeySequence.Copy):
+      self.copyCells()
+    else:
+      qt.QTableWidget.keyPressEvent(self, event)
+
+  def copyCells(self):
+    indexes = self.getSelectedCells()
+    #print indexes
+    text = ''
+    highestCol = indexes[len(indexes)-1][1]
+    for index in indexes:
+      cell = self.item(index[0],index[1])
+      if cell:
+        text += cell.text()
+        if index[1] != highestCol:
+          text += '\t'
+        else:
+          text += '\n'
+    #print text
+    qt.QApplication.clipboard().setText(text)
+    
+  def getSelectedCells(self):
+    cells = []
+    for row in xrange(0, self.rowCount):
+      for col in xrange(0, self.columnCount):
+        cell = self.item(row,col)
+        if cell.isSelected():
+          cells.append([row,col])
+    return cells
+    
 
 class PETIndiCTest(ScriptedLoadableModuleTest):
   """
