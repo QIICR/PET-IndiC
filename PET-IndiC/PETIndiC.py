@@ -16,11 +16,11 @@ class PETIndiC(ScriptedLoadableModule):
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
     self.parent.title = "PET-IndiC" # TODO make this more human readable by adding spaces
-    self.parent.categories = ["Segmentation"]
+    self.parent.categories = ["Quantification"]
     self.parent.dependencies = ["QuantitativeIndicesTool"]
     self.parent.contributors = ["Ethan Ulrich (Univ. of Iowa), Christian Bauer (Univ. of Iowa), Markus van Tol (Univ. of Iowa), Reinhard R. Beichel (Univ. of Iowa), John Buatti (Univ. of Iowa)"] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
-    The PET-IndiC allows for fast segmentation of regions of interest and calculation of quantitative indices.
+    The PET-IndiC extension allows for fast segmentation of regions of interest and calculation of quantitative indices.
     """
     self.parent.acknowledgementText = """
     This work is funded in part by Quantitative Imaging to Assess Response in Cancer Therapy Trials NIH grant U01-CA140206 and Quantitative Image Informatics for Cancer Research (QIICR) NIH grant U24 CA180918.""" # replace with organization, grant and thanks.
