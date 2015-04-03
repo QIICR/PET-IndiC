@@ -20,8 +20,10 @@ class PETIndiC(ScriptedLoadableModule):
     self.parent.dependencies = ["QuantitativeIndicesTool"]
     self.parent.contributors = ["Ethan Ulrich (Univ. of Iowa), Christian Bauer (Univ. of Iowa), Markus van Tol (Univ. of Iowa), Reinhard R. Beichel (Univ. of Iowa), John Buatti (Univ. of Iowa)"] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
-    The PET-IndiC extension allows for fast segmentation of regions of interest and calculation of quantitative indices.
-    """
+    The PET-IndiC extension allows for fast segmentation of regions of interest and calculation of quantitative indices. 
+    For more information about the indices calculated, see 
+    <a href=\"http://www.slicer.org/slicerWiki/index.php/Documentation/4.4/Modules/QuantitativeIndicesCLI#Module_Description\">here</a>
+    ."""
     self.parent.acknowledgementText = """
     This work is funded in part by Quantitative Imaging to Assess Response in Cancer Therapy Trials NIH grant U01-CA140206 and Quantitative Image Informatics for Cancer Research (QIICR) NIH grant U24 CA180918.""" # replace with organization, grant and thanks.
 
