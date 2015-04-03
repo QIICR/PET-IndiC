@@ -201,18 +201,22 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.MeanCheckBox = qt.QCheckBox("Mean", self.QIFrame1)
     self.QIFrame1.layout().addWidget(self.MeanCheckBox)
     self.MeanCheckBox.checked = False
+    self.MeanCheckBox.setToolTip("mean value in region of interest")
 
     self.VarianceCheckBox = qt.QCheckBox("Variance", self.QIFrame1)
     self.QIFrame1.layout().addWidget(self.VarianceCheckBox)
     self.VarianceCheckBox.checked = False
+    self.VarianceCheckBox.setToolTip("variance in region of interest")
 
     self.MinCheckBox = qt.QCheckBox("Minimum", self.QIFrame1)
     self.QIFrame1.layout().addWidget(self.MinCheckBox)
     self.MinCheckBox.checked = False
+    self.MinCheckBox.setToolTip("minimum value in region of interest")
 
     self.MaxCheckBox = qt.QCheckBox("Maximum", self.QIFrame1)
     self.QIFrame1.layout().addWidget(self.MaxCheckBox)
     self.MaxCheckBox.checked = False
+    self.MaxCheckBox.setToolTip("maximum value in region of interest")
 
     self.QIFrame2 = qt.QFrame(self.parent)
     self.QIFrame2.setLayout(qt.QHBoxLayout())
@@ -223,18 +227,22 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.Quart1CheckBox = qt.QCheckBox("1st Quartile", self.QIFrame2)
     self.QIFrame2.layout().addWidget(self.Quart1CheckBox)
     self.Quart1CheckBox.checked = False
+    self.Quart1CheckBox.setToolTip("25th percentile value in region of interest")
 
     self.MedianCheckBox = qt.QCheckBox("Median", self.QIFrame2)
     self.QIFrame2.layout().addWidget(self.MedianCheckBox)
     self.MedianCheckBox.checked = False
+    self.MedianCheckBox.setToolTip("50th percentile value in region of interest")
 
     self.Quart3CheckBox = qt.QCheckBox("3rd Quartile", self.QIFrame2)
     self.QIFrame2.layout().addWidget(self.Quart3CheckBox)
     self.Quart3CheckBox.checked = False
+    self.Quart3CheckBox.setToolTip("75th percentile value in region of interest")
 
     self.UpperAdjacentCheckBox = qt.QCheckBox("Upper Adjacent", self.QIFrame2)
     self.QIFrame2.layout().addWidget(self.UpperAdjacentCheckBox)
     self.UpperAdjacentCheckBox.checked = False
+    self.UpperAdjacentCheckBox.setToolTip("first value in region of interest not greater than 1.5 times the interquartile range")
 
     self.QIFrame3 = qt.QFrame(self.parent)
     self.QIFrame3.setLayout(qt.QHBoxLayout())
@@ -245,18 +253,22 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.Q1CheckBox = qt.QCheckBox("Q1 Distribution", self.QIFrame3)
     self.QIFrame3.layout().addWidget(self.Q1CheckBox)
     self.Q1CheckBox.checked = False
+    self.Q1CheckBox.setToolTip("% of gray values that fall within the 1st quarter of the grayscale range within the region of interest")
 
     self.Q2CheckBox = qt.QCheckBox("Q2 Distribution", self.QIFrame3)
     self.QIFrame3.layout().addWidget(self.Q2CheckBox)
     self.Q2CheckBox.checked = False
+    self.Q2CheckBox.setToolTip("% of gray values that fall within the 2nd quarter of the grayscale range within the region of interest")
 
     self.Q3CheckBox = qt.QCheckBox("Q3 Distribution", self.QIFrame3)
     self.QIFrame3.layout().addWidget(self.Q3CheckBox)
     self.Q3CheckBox.checked = False
+    self.Q3CheckBox.setToolTip("% of gray values that fall within the 3rd quarter of the grayscale range within the region of interest")
 
     self.Q4CheckBox = qt.QCheckBox("Q4 Distribution", self.QIFrame3)
     self.QIFrame3.layout().addWidget(self.Q4CheckBox)
     self.Q4CheckBox.checked = False
+    self.Q4CheckBox.setToolTip("% of gray values that fall within the 4th quarter of the grayscale range within the region of interest")
 
     self.QIFrame4 = qt.QFrame(self.parent)
     self.QIFrame4.setLayout(qt.QHBoxLayout())
@@ -267,18 +279,22 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.Gly1CheckBox = qt.QCheckBox("Glycolysis Q1", self.QIFrame4)
     self.QIFrame4.layout().addWidget(self.Gly1CheckBox)
     self.Gly1CheckBox.checked = False
+    self.Gly1CheckBox.setToolTip("lesion glycolysis calculated from the 1st quarter of the grayscale range within the region of interest")
 
     self.Gly2CheckBox = qt.QCheckBox("Glycolysis Q2", self.QIFrame4)
     self.QIFrame4.layout().addWidget(self.Gly2CheckBox)
     self.Gly2CheckBox.checked = False
+    self.Gly2CheckBox.setToolTip("lesion glycolysis calculated from the 2nd quarter of the grayscale range within the region of interest")
 
     self.Gly3CheckBox = qt.QCheckBox("Glycolysis Q3", self.QIFrame4)
     self.QIFrame4.layout().addWidget(self.Gly3CheckBox)
     self.Gly3CheckBox.checked = False
+    self.Gly3CheckBox.setToolTip("lesion glycolysis calculated from the 3rd quarter of the grayscale range within the region of interest")
 
     self.Gly4CheckBox = qt.QCheckBox("Glycolysis Q4", self.QIFrame4)
     self.QIFrame4.layout().addWidget(self.Gly4CheckBox)
     self.Gly4CheckBox.checked = False
+    self.Gly4CheckBox.setToolTip("lesion glycolysis calculated from the 4th quarter of the grayscale range within the region of interest")
 
     self.QIFrame5 = qt.QFrame(self.parent)
     self.QIFrame5.setLayout(qt.QHBoxLayout())
@@ -289,18 +305,22 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.TLGCheckBox = qt.QCheckBox("TLG", self.QIFrame5)
     self.QIFrame5.layout().addWidget(self.TLGCheckBox)
     self.TLGCheckBox.checked = False
+    self.TLGCheckBox.setToolTip("total lesion glycolysis")
 
     self.SAMCheckBox = qt.QCheckBox("SAM", self.QIFrame5)
     self.QIFrame5.layout().addWidget(self.SAMCheckBox)
     self.SAMCheckBox.checked = False
+    self.SAMCheckBox.setToolTip("standardized added metabolic activity")
 
     self.SAMBGCheckBox = qt.QCheckBox("SAM Background", self.QIFrame5)
     self.QIFrame5.layout().addWidget(self.SAMBGCheckBox)
     self.SAMBGCheckBox.checked = False
+    self.SAMBGCheckBox.setToolTip("local background estimator near region of interest")
 
     self.RMSCheckBox = qt.QCheckBox("RMS", self.QIFrame5)
     self.QIFrame5.layout().addWidget(self.RMSCheckBox)
     self.RMSCheckBox.checked = False
+    self.RMSCheckBox.setToolTip("root-mean-square value in region of interest")
 
     self.QIFrame6 = qt.QFrame(self.parent)
     self.QIFrame6.setLayout(qt.QHBoxLayout())
@@ -311,10 +331,12 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.PeakCheckBox = qt.QCheckBox("Peak", self.QIFrame6)
     self.QIFrame6.layout().addWidget(self.PeakCheckBox)
     self.PeakCheckBox.checked = False
+    self.PeakCheckBox.setToolTip("maximum average gray value that is calculated from a 1 cm^3 sphere placed within the region of interest")
     
     self.VolumeCheckBox = qt.QCheckBox("Volume", self.QIFrame6)
     self.QIFrame6.layout().addWidget(self.VolumeCheckBox)
     self.VolumeCheckBox.checked = False
+    self.VolumeCheckBox.setToolTip("volume of region of interest")
        
     self.selectAllButton = qt.QPushButton("Select All")
     self.selectAllButton.toolTip = "Select all quantitative features." 

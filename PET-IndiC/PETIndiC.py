@@ -20,8 +20,10 @@ class PETIndiC(ScriptedLoadableModule):
     self.parent.dependencies = ["QuantitativeIndicesTool"]
     self.parent.contributors = ["Ethan Ulrich (Univ. of Iowa), Christian Bauer (Univ. of Iowa), Markus van Tol (Univ. of Iowa), Reinhard R. Beichel (Univ. of Iowa), John Buatti (Univ. of Iowa)"] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
-    The PET-IndiC extension allows for fast segmentation of regions of interest and calculation of quantitative indices.
-    """
+    The PET-IndiC extension allows for fast segmentation of regions of interest and calculation of quantitative indices. 
+    For more information about the indices calculated, see 
+    <a href=\"http://www.slicer.org/slicerWiki/index.php/Documentation/4.4/Modules/QuantitativeIndicesCLI#Module_Description\">here</a>
+    ."""
     self.parent.acknowledgementText = """
     This work is funded in part by Quantitative Imaging to Assess Response in Cancer Therapy Trials NIH grant U01-CA140206 and Quantitative Image Informatics for Cancer Research (QIICR) NIH grant U24 CA180918.""" # replace with organization, grant and thanks.
 
@@ -551,50 +553,17 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
       print('WARNING: could not interpret units for '+ indexName +'. Units: '+ imageUnits)
       return '-'
     else:
-      if indexName=='Mean':
-        return 'g/ml'
-      elif indexName=='Min':
-        return 'g/ml'
-      elif indexName=='Max':
-        return 'g/ml'
-      elif indexName=='Peak':
-        return 'g/ml'
+      units = (imageUnits.split('{')[1]).split('}')[0]
+      if indexName in ['Mean','Min','Max','Peak','First Quartile','Median','Third Quartile','Upper Adjacent','RMS','SAM Background']:
+        return units
       elif indexName=='Volume':
-        return 'cm^3'
-      elif indexName=='TLG':
-        return 'g'
+        return 'ml'
       elif indexName=='Variance':
-        return '(g/ml)^2'
-      elif indexName=='First Quartile':
-        return 'g/ml'
-      elif indexName=='Median':
-        return 'g/ml'
-      elif indexName=='Third Quartile':
-        return 'g/ml'
-      elif indexName=='Upper Adjacent':
-        return 'g/ml'
-      elif indexName=='RMS':
-        return 'g/ml'
-      elif indexName=='Glycolysis Q1':
-        return 'g'
-      elif indexName=='Glycolysis Q2':
-        return 'g'
-      elif indexName=='Glycolysis Q3':
-        return 'g'
-      elif indexName=='Glycolysis Q4':
-        return 'g'
-      elif indexName=='Q1 Distribution':
+        return units + '^2'
+      elif indexName in ['TLG','Glycolysis Q1','Glycolysis Q2','Glycolysis Q3','Glycolysis Q4','SAM']:
+        return units + '*ml'
+      elif indexName in ['Q1 Distribution','Q2 Distribution','Q3 Distribution','Q4 Distribution']:
         return '%'
-      elif indexName=='Q2 Distribution':
-        return '%'
-      elif indexName=='Q3 Distribution':
-        return '%'
-      elif indexName=='Q4 Distribution':
-        return '%'
-      elif indexName=='SAM':
-        return 'g'
-      elif indexName=='SAM Background':
-        return 'g/ml'
       else:
         print('WARNING: could not interpret units for '+ indexName +'. Units: '+ imageUnits)
         return '-'
