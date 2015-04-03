@@ -565,55 +565,6 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
       else:
         print('WARNING: could not interpret units for '+ indexName +'. Units: '+ imageUnits)
         return '-'
-        
-      """if indexName=='Mean':
-        return 'g/ml'
-      elif indexName=='Min':
-        return 'g/ml'
-      elif indexName=='Max':
-        return 'g/ml'
-      elif indexName=='Peak':
-        return 'g/ml'
-      elif indexName=='Volume':
-        return 'cm^3'
-      elif indexName=='TLG':
-        return 'g'
-      elif indexName=='Variance':
-        return '(g/ml)^2'
-      elif indexName=='First Quartile':
-        return 'g/ml'
-      elif indexName=='Median':
-        return 'g/ml'
-      elif indexName=='Third Quartile':
-        return 'g/ml'
-      elif indexName=='Upper Adjacent':
-        return 'g/ml'
-      elif indexName=='RMS':
-        return 'g/ml'
-      elif indexName=='Glycolysis Q1':
-        return 'g'
-      elif indexName=='Glycolysis Q2':
-        return 'g'
-      elif indexName=='Glycolysis Q3':
-        return 'g'
-      elif indexName=='Glycolysis Q4':
-        return 'g'
-      elif indexName=='Q1 Distribution':
-        return '%'
-      elif indexName=='Q2 Distribution':
-        return '%'
-      elif indexName=='Q3 Distribution':
-        return '%'
-      elif indexName=='Q4 Distribution':
-        return '%'
-      elif indexName=='SAM':
-        return 'g'
-      elif indexName=='SAM Background':
-        return 'g/ml'
-      else:
-        print('WARNING: could not interpret units for '+ indexName +'. Units: '+ imageUnits)
-        return '-'
-      """
   
   def hasImageData(self,volumeNode):
     """This is an example logic method that
