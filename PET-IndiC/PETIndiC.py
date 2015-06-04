@@ -62,7 +62,6 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     #
     self.inputSelector = slicer.qMRMLNodeComboBox()
     self.inputSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.inputSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
     self.inputSelector.selectNodeUponCreation = False
     self.inputSelector.addEnabled = False
     self.inputSelector.removeEnabled = True
@@ -77,8 +76,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     # input label image selector
     #
     self.labelSelector = slicer.qMRMLNodeComboBox()
-    self.labelSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.labelSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 1 )
+    self.labelSelector.nodeTypes = ( ("vtkMRMLLabelMapVolumeNode"), "" )
     self.labelSelector.setEnabled(False)
     self.labelSelector.selectNodeUponCreation = False
     self.labelSelector.addEnabled = True
@@ -470,7 +468,7 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
     if not labelFound:
       print('Creating dedicated label ' + imageName + '_label')
       # TODO find a better way to create a blank label map
-      imageNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLScalarVolumeNode())
+      imageNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLLabelMapVolumeNode())
       newLabelData = vtk.vtkImageData()
       newLabelData.DeepCopy(currentNode.GetImageData())
       ijkToRAS = vtk.vtkMatrix4x4()
@@ -493,7 +491,6 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
       multiplier.Update()
       imageNode.GetImageData().DeepCopy(multiplier.GetOutput())
        
-      imageNode.SetLabelMap(1)
       imageNode.SetName(imageName + '_label')
 
     return imageNode

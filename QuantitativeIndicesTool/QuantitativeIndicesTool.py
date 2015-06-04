@@ -99,7 +99,6 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     #
     self.grayscaleSelector = slicer.qMRMLNodeComboBox()
     self.grayscaleSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.grayscaleSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 0 )
     self.grayscaleSelector.selectNodeUponCreation = True
     self.grayscaleSelector.addEnabled = False
     self.grayscaleSelector.removeEnabled = False
@@ -115,8 +114,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     # label map volume selector
     #
     self.labelSelector = slicer.qMRMLNodeComboBox()
-    self.labelSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
-    self.labelSelector.addAttribute( "vtkMRMLScalarVolumeNode", "LabelMap", 1 )
+    self.labelSelector.nodeTypes = ( ("vtkMRMLLabelMapVolumeNode"), "" )
     self.labelSelector.selectNodeUponCreation = True
     self.labelSelector.addEnabled = False
     self.labelSelector.removeEnabled = False
