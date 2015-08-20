@@ -537,7 +537,7 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
                         q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag, TLGFlag, SAMFlag, SAMBGFlag, RMSFlag, 
                         PeakFlag, VolumeFlag):
     print('      Recalculating QIs')
-    qiLogic = QuantitativeIndicesToolLogic()
+    qiLogic = slicer.modules.QuantitativeIndicesToolWidget.logic
     node = qiLogic.run(scalarVolume,labelVolume,cliNode,labelValue,meanFlag, varianceFlag, minFlag,
                         maxFlag, quart1Flag, medianFlag, quart3Flag, upperAdjacentFlag, q1Flag, q2Flag, q3Flag, 
                         q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag, TLGFlag, SAMFlag, SAMBGFlag, RMSFlag, 

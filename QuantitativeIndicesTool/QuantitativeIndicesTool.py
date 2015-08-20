@@ -57,6 +57,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
 
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
+    self.logic = QuantitativeIndicesToolLogic()
     """# Instantiate and connect widgets ...
 
     #
