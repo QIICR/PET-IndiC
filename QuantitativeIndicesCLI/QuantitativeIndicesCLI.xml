@@ -35,6 +35,19 @@
       <index>1</index>
       <description><![CDATA[Label Map Image File]]></description>
     </image>
+    <file>
+      <name>CSVFile</name>
+      <label>CSV Output File</label>
+      <longflag>--csvFile</longflag>
+      <description><![CDATA[Output CSV file name that will contain the calculated indices]]></description>
+    </file>
+    <boolean>
+      <name>returnCSV</name>
+      <label>Output CSV Only</label>
+      <longflag>--returnCSV</longflag>
+      <description><![CDATA[Calculate indices for all labels and return CSV file]]></description>
+      <default>false</default>
+    </boolean>
     <integer>
       <name>Label_Value</name>
       <label>Label Value</label>
@@ -59,10 +72,10 @@
       <default>false</default>
     </boolean>
     <boolean>
-      <name>Variance</name>
-      <label>Variance</label>
-      <longflag>--variance</longflag>
-      <description><![CDATA[Variance in region of interest]]></description>
+      <name>Std_Deviation</name>
+      <label>Standard Deviation</label>
+      <longflag>--stddev</longflag>
+      <description><![CDATA[Standard deviation in region of interest]]></description>
       <default>false</default>
     </boolean>
     <boolean>
@@ -246,10 +259,10 @@
       <description><![CDATA[Total lesion glycolysis]]></description>
     </string>
     <string>
-      <name>Variance_s</name>
-      <label>Variance</label>
+      <name>Std_Deviation_s</name>
+      <label>Standard Deviation</label>
       <channel>output</channel>
-      <description><![CDATA[Variance in region of interest]]></description>
+      <description><![CDATA[Standard deviation in region of interest]]></description>
     </string>
     <string>
       <name>First_Quartile_s</name>

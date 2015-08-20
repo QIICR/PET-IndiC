@@ -4,6 +4,7 @@ set(MODULE_NAME QuantitativeIndicesCLI)
 
 #-----------------------------------------------------------------------------
 set(MODULE_INCLUDE_DIRECTORIES
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
   )
 
 set(MODULE_SRCS
