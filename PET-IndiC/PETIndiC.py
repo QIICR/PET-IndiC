@@ -335,7 +335,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
         if volumeNode and labelNode:
           if labelValue not in volumeNode.labels:
             volumeNode.labels.append(labelValue)
-          pd = qt.QProgressDialog('Calculating...', 'Cancel', 0, 100, mainWindow())
+          pd = qt.QProgressDialog('Calculating...', 'Cancel', 0, 100, slicer.util.mainWindow())
           pd.setModal(True)
           pd.setMinimumDuration(0)
           pd.show()
@@ -356,7 +356,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     if labelValue > 0:
       if volumeNode and labelNode:
         if labelValue in volumeNode.labels:
-          pd = qt.QProgressDialog('Calculating...', 'Cancel', 0, 100, mainWindow())
+          pd = qt.QProgressDialog('Calculating...', 'Cancel', 0, 100, slicer.util.mainWindow())
           pd.setModal(True)
           pd.setMinimumDuration(0)
           pd.show()
