@@ -202,10 +202,10 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.MeanCheckBox.checked = False
     self.MeanCheckBox.setToolTip("mean value in region of interest")
 
-    self.VarianceCheckBox = qt.QCheckBox("Variance", self.QIFrame1)
-    self.QIFrame1.layout().addWidget(self.VarianceCheckBox)
-    self.VarianceCheckBox.checked = False
-    self.VarianceCheckBox.setToolTip("variance in region of interest")
+    self.StdDevCheckBox = qt.QCheckBox("Std Deviation", self.QIFrame1)
+    self.QIFrame1.layout().addWidget(self.StdDevCheckBox)
+    self.StdDevCheckBox.checked = False
+    self.StdDevCheckBox.setToolTip("standard deviation in region of interest")
 
     self.MinCheckBox = qt.QCheckBox("Minimum", self.QIFrame1)
     self.QIFrame1.layout().addWidget(self.MinCheckBox)
@@ -472,7 +472,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     """ Check all quantitative features
     """
     self.MeanCheckBox.checked = True
-    self.VarianceCheckBox.checked = True
+    self.StdDevCheckBox.checked = True
     self.MinCheckBox.checked = True
     self.MaxCheckBox.checked = True
     self.Quart1CheckBox.checked = True
@@ -499,7 +499,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     """ Uncheck all quantitative features
     """
     self.MeanCheckBox.checked = False
-    self.VarianceCheckBox.checked = False
+    self.StdDevCheckBox.checked = False
     self.MinCheckBox.checked = False
     self.MaxCheckBox.checked = False
     self.Quart1CheckBox.checked = False
@@ -552,13 +552,13 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     slicer.app.processEvents()
 
     #logic = QuantitativeIndicesToolLogic(self.grayscaleNode,self.labelNode)
-    logic = QuantitativeIndicesToolLogic()
+    #logic = QuantitativeIndicesToolLogic()
     #enableScreenshotsFlag = self.enableScreenshotsFlagCheckBox.checked
     #screenshotScaleFactor = int(self.screenshotScaleFactorSliderWidget.value)
     labelValue = int(self.labelValueSelector.value)
     # Connections to quantitative feature selections
     meanFlag = self.MeanCheckBox.checked
-    varianceFlag = self.VarianceCheckBox.checked
+    stddevFlag = self.StdDevCheckBox.checked
     minFlag = self.MinCheckBox.checked
     maxFlag = self.MaxCheckBox.checked
     quart1Flag = self.Quart1CheckBox.checked
@@ -581,11 +581,11 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     VolumeFlag = self.VolumeCheckBox.checked
      
     """newNode = logic.run(self.grayscaleNode, self.labelNode, None, enableScreenshotsFlag, screenshotScaleFactor, 
-                        labelValue, meanFlag, varianceFlag, minFlag, maxFlag, quart1Flag, medianFlag, quart3Flag, 
+                        labelValue, meanFlag, stddevFlag, minFlag, maxFlag, quart1Flag, medianFlag, quart3Flag,
                         upperAdjacentFlag, q1Flag, q2Flag, q3Flag, q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag, 
                         TLGFlag, SAMFlag, SAMBGFlag, RMSFlag, PeakFlag, VolumeFlag)"""
                         
-    newNode = logic.run(self.grayscaleNode, self.labelNode, None, labelValue, meanFlag, varianceFlag, minFlag,
+    newNode = self.logic.run(self.grayscaleNode, self.labelNode, None, labelValue, meanFlag, stddevFlag, minFlag,
                         maxFlag, quart1Flag, medianFlag, quart3Flag, upperAdjacentFlag, q1Flag, q2Flag, q3Flag, 
                         q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag, TLGFlag, SAMFlag, SAMBGFlag, RMSFlag, 
                         PeakFlag, VolumeFlag)
@@ -711,10 +711,10 @@ class QuantitativeIndicesToolLogic(ScriptedLoadableModuleLogic):
 
 
   """def run(self,inputVolume,labelVolume,cliNode,enableScreenshots=0,screenshotScaleFactor=1,labelValue=1,mean=False,
-          variance=False,minimum=False,maximum=False,quart1=False,median=False,quart3=False,adj=False,
+          stddev=False,minimum=False,maximum=False,quart1=False,median=False,quart3=False,adj=False,
           q1=False,q2=False,q3=False,q4=False,gly1=False,gly2=False,gly3=False,gly4=False,tlg=False,
           sam=False,samBG=False,rms=False,peak=False,volume=False):"""
-  def run(self,inputVolume,labelVolume,cliNode,labelValue=1,mean=False,variance=False,minimum=False,maximum=False,
+  def run(self,inputVolume,labelVolume,cliNode,labelValue=1,mean=False,stddev=False,minimum=False,maximum=False,
           quart1=False,median=False,quart3=False,adj=False,q1=False,q2=False,q3=False,q4=False,gly1=False,
           gly2=False,gly3=False,gly4=False,tlg=False,sam=False,samBG=False,rms=False,peak=False,volume=False):
     """
@@ -728,8 +728,8 @@ class QuantitativeIndicesToolLogic(ScriptedLoadableModuleLogic):
     parameters['Label_Value'] = str(labelValue)
     if(mean):
       parameters['Mean'] = 'true'
-    if(variance):
-      parameters['Variance'] = 'true'
+    if(stddev):
+      parameters['Std_Deviation'] = 'true'
     if(minimum):
       parameters['Min'] = 'true'
     if(maximum):

@@ -132,7 +132,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     self.qiWidget.featuresCollapsibleButton.collapsed = True
     self.MeanCheckBox = self.qiWidget.MeanCheckBox
     self.MeanCheckBox.checked = True
-    self.VarianceCheckBox = self.qiWidget.VarianceCheckBox
+    self.StdDevCheckBox = self.qiWidget.StdDevCheckBox
     self.MinCheckBox = self.qiWidget.MinCheckBox
     self.MinCheckBox.checked = True
     self.MaxCheckBox = self.qiWidget.MaxCheckBox
@@ -210,7 +210,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     self.preset4Button.connect('clicked(bool)',self.onPreset4Button)
     self.editorWidget.toolsColor.colorSpin.connect('valueChanged(int)', self.calculateIndicesFromCurrentLabel)
     self.MeanCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
-    self.VarianceCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
+    self.StdDevCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
     self.MinCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
     self.MaxCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
     self.Quart1CheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
@@ -379,7 +379,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
             
   def calculateIndices(self, volumeNode, labelNode, cliNode, labelValue):
     newNode = None
-    newNode = self.logic.calculateOnLabelModified(volumeNode, labelNode, cliNode, labelValue, self.MeanCheckBox.checked, self.VarianceCheckBox.checked, self.MinCheckBox.checked, self.MaxCheckBox.checked, self.Quart1CheckBox.checked, self.MedianCheckBox.checked, self.Quart3CheckBox.checked, self.UpperAdjacentCheckBox.checked, self.Q1CheckBox.checked, self.Q2CheckBox.checked, self.Q3CheckBox.checked, self.Q4CheckBox.checked, self.Gly1CheckBox.checked, self.Gly2CheckBox.checked, self.Gly3CheckBox.checked, self.Gly4CheckBox.checked, self.TLGCheckBox.checked, self.SAMCheckBox.checked, self.SAMBGCheckBox.checked, self.RMSCheckBox.checked, self.PeakCheckBox.checked, self.VolumeCheckBox.checked)
+    newNode = self.logic.calculateOnLabelModified(volumeNode, labelNode, cliNode, labelValue, self.MeanCheckBox.checked, self.StdDevCheckBox.checked, self.MinCheckBox.checked, self.MaxCheckBox.checked, self.Quart1CheckBox.checked, self.MedianCheckBox.checked, self.Quart3CheckBox.checked, self.UpperAdjacentCheckBox.checked, self.Q1CheckBox.checked, self.Q2CheckBox.checked, self.Q3CheckBox.checked, self.Q4CheckBox.checked, self.Gly1CheckBox.checked, self.Gly2CheckBox.checked, self.Gly3CheckBox.checked, self.Gly4CheckBox.checked, self.TLGCheckBox.checked, self.SAMCheckBox.checked, self.SAMBGCheckBox.checked, self.RMSCheckBox.checked, self.PeakCheckBox.checked, self.VolumeCheckBox.checked)
     return newNode
 
     
@@ -532,13 +532,13 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
       units = imageNode.GetAttribute('DICOM.MeasurementUnitsCodeValue')
     return units
     
-  def calculateOnLabelModified(self, scalarVolume, labelVolume, cliNode, labelValue, meanFlag, varianceFlag, minFlag,
+  def calculateOnLabelModified(self, scalarVolume, labelVolume, cliNode, labelValue, meanFlag, stddevFlag, minFlag,
                         maxFlag, quart1Flag, medianFlag, quart3Flag, upperAdjacentFlag, q1Flag, q2Flag, q3Flag, 
                         q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag, TLGFlag, SAMFlag, SAMBGFlag, RMSFlag, 
                         PeakFlag, VolumeFlag):
     print('      Recalculating QIs')
     qiLogic = slicer.modules.QuantitativeIndicesToolWidget.logic
-    node = qiLogic.run(scalarVolume,labelVolume,cliNode,labelValue,meanFlag, varianceFlag, minFlag,
+    node = qiLogic.run(scalarVolume,labelVolume,cliNode,labelValue,meanFlag, stddevFlag, minFlag,
                         maxFlag, quart1Flag, medianFlag, quart3Flag, upperAdjacentFlag, q1Flag, q2Flag, q3Flag, 
                         q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag, TLGFlag, SAMFlag, SAMBGFlag, RMSFlag, 
                         PeakFlag, VolumeFlag)
@@ -551,12 +551,12 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
       return '-'
     else:
       units = (imageUnits.split('{')[1]).split('}')[0]
-      if indexName in ['Mean','Min','Max','Peak','First Quartile','Median','Third Quartile','Upper Adjacent','RMS','SAM Background']:
+      if indexName in ['Mean','Std Deviation','Min','Max','Peak','First Quartile','Median','Third Quartile','Upper Adjacent','RMS','SAM Background']:
         return units
       elif indexName=='Volume':
         return 'ml'
-      elif indexName=='Variance':
-        return units + '^2'
+      #elif indexName=='Variance':
+        #return units + '^2'
       elif indexName in ['TLG','Glycolysis Q1','Glycolysis Q2','Glycolysis Q3','Glycolysis Q4','SAM']:
         return units + '*ml'
       elif indexName in ['Q1 Distribution','Q2 Distribution','Q3 Distribution','Q4 Distribution']:
