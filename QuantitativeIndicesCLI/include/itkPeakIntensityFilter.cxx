@@ -833,11 +833,11 @@ PeakIntensityFilter<TImage, TLabelImage>
   labelNeighborhoodOperator->SetOperator(labelNeighborhood); 
   neighborhoodOperator->SetOperator(neighborhood);
   
-  typedef typename itk::ImageFileWriter<InternalImageType> WriterType;
+  /*typedef typename itk::ImageFileWriter<InternalImageType> WriterType;
   typename WriterType::Pointer writer = WriterType::New();
   writer->SetFileName( "mask.nrrd" );
   writer->SetInput( m_KernelImage );
-  writer->Update();
+  writer->Update();*/
 
 }
 

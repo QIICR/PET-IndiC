@@ -30,6 +30,8 @@ public:
   typedef typename LabelImageType::Pointer      LabelImagePointer;
   typedef typename LabelImageType::ConstPointer LabelImageConstPointer;
   typedef typename LabelImageType::PixelType    LabelPixelType;
+  typedef typename itk::Image<double, ImageType::ImageDimension> InternalImageType;
+  
   itkNewMacro( Self );
   
   /** Dimension of the underlying image. */
@@ -58,6 +60,7 @@ public:
   itkSetMacro(SamplingFactor, int);
   itkSetMacro(UseInteriorOnly, bool);
   itkSetMacro(UseApproximateKernel, bool);
+  itkGetMacro(KernelImage, typename InternalImageType::Pointer);
   
   /** Set the radii of the peak kernel for all dimensions. */
   void SetSphereRadius(double r);
@@ -68,21 +71,24 @@ public:
   /** Determines the total volume of the kernel based on the voxel size and weights */
   double GetKernelVolume();
   
+  /** Creates the peak kernel based on image spacing and kernel size */
+  void BuildPeakKernel();
+  
   /** Applies the peak kernel to determine peak intensity value */
   void CalculatePeak();
+
 
 protected:
   PeakIntensityFilter();
   ~PeakIntensityFilter();
   virtual void PrintSelf(std::ostream& os, Indent indent) const;
   
-  typedef typename itk::Image<double, ImageType::ImageDimension> InternalImageType;
   typedef typename itk::Neighborhood<double, ImageType::ImageDimension> NeighborhoodType;
   typedef typename itk::NeighborhoodOperatorImageFunction<ImageType, double> NeighborhoodOperatorImageFunctionType;
   typedef typename itk::NeighborhoodOperatorImageFunction<LabelImageType, int> LabelNeighborhoodOperatorImageFunctionType;
   
   void GenerateData();
-  void BuildPeakKernel();
+  
   void ApproximatePeakKernel();
   void MakeKernelOperators( NeighborhoodOperatorImageFunctionType* neighborhoodOperator,
                             LabelNeighborhoodOperatorImageFunctionType* labelNeighborhoodOperator );
