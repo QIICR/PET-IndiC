@@ -6,6 +6,11 @@
 #include <itkImageRegionConstIterator.h>
 #include <iostream>
 
+// make isnan available for older compilers not supporting c++11
+#if __cplusplus<201103L 
+#define isnan(x) _isnan(x)
+#endif
+
 #include "itkQuantitativeIndicesComputationFilter.h"
 #include "itkPluginUtilities.h"
 

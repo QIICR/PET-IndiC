@@ -266,9 +266,9 @@ PeakIntensityFilter<TImage, TLabelImage>
   for(unsigned int i=0; i<ImageDimension; ++i)
   {
     pad[i] = ceil(1.5*m_SphereRadius[i]/voxelSize[i]);
-    minIndex[i] = std::floor(lowerIndex[i]-pad[i]);
+    minIndex[i] = lowerIndex[i]-pad[i];
     if(minIndex[i]<imageIndex[i]) minIndex[i]=imageIndex[i];
-    maxIndex[i] = std::floor(upperIndex[i]+pad[i]);
+    maxIndex[i] = upperIndex[i]+pad[i];
     if(maxIndex[i]>imageSize[i]-1) maxIndex[i]=imageSize[i]-1;
     size[i] = maxIndex[i]-minIndex[i]+1;
   }
@@ -502,19 +502,15 @@ PeakIntensityFilter<TImage, TLabelImage>
 //   Output:
 //     fraction of the voxel's volume that intersects the sphere
 
-  // determine the eight corners of the voxel
-  double close[] = {x-0.5*spx, y-0.5*spy, z-0.5*spz};
-  double far[] = {close[0]+spx, close[1]+spy, close[2]+spz};
-  double corners[8][3] = { {close[0], close[1], close[2]},
-			 {far[0], close[1], close[2]},
-			 {close[0], far[1], close[2]},
-			 {close[0], close[1], far[2]},
-			 {far[0], close[1], far[2]},
-			 {close[0], far[1], far[2]},
-			 {far[0], far[1], close[2]},
-			 {far[0], far[1], far[2]} };
-
-
+  // define the eight corners of the voxel
+  double corners[8][3] = { {x-0.5*spx, y-0.5*spy, z-0.5*spz},
+			 {x+0.5*spx, y-0.5*spy, z-0.5*spz},
+			 {x-0.5*spx, y+0.5*spy, z-0.5*spz},
+			 {x-0.5*spx, y-0.5*spy, z+0.5*spz},
+			 {x+0.5*spx, y-0.5*spy, z+0.5*spz},
+			 {x-0.5*spx, y+0.5*spy, z+0.5*spz},
+			 {x+0.5*spx, y+0.5*spy, z-0.5*spz},
+			 {x+0.5*spx, y+0.5*spy, z+0.5*spz} };
 
   for ( int m = 0; m < 8; ++m )
   {
