@@ -6,8 +6,8 @@
 #include <itkImageRegionConstIterator.h>
 #include <iostream>
 
-// make isnan available for older compilers not supporting c++11
-#if __cplusplus<201103L 
+// make isnan available for older Visual Studio compilers
+#if defined(_MSC_VER) && (_MSC_VER<1800)
 #define isnan(x) _isnan(x)
 #endif
 
