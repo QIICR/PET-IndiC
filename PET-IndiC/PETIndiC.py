@@ -208,7 +208,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     self.preset2Button.connect('clicked(bool)',self.onPreset2Button)
     self.preset3Button.connect('clicked(bool)',self.onPreset3Button)
     self.preset4Button.connect('clicked(bool)',self.onPreset4Button)
-    self.editorWidget.toolsColor.colorSpin.connect('valueChanged(int)', self.calculateIndicesFromCurrentLabel)
+    # moved to enter() method self.editorWidget.toolsColor.colorSpin.connect('valueChanged(int)', self.calculateIndicesFromCurrentLabel)
     self.MeanCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
     self.StdDevCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
     self.MinCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
@@ -251,6 +251,15 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
       except AttributeError:
         pass
     self.items = []
+  
+  def enter(self):
+    self.moduleVisible = True
+    if not self.resultsTable.visible: # update values when widget opens
+      self.calculateIndicesFromCurrentLabel(self.editorWidget.toolsColor.colorSpin.value)
+      
+  def exit(self):
+    self.moduleVisible = False
+    self.editorWidget.exit()
 
   def onVolumeSelect(self):
     """Search for the dedicated label image. If none found, create a new one."""
@@ -328,6 +337,8 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
   def labelModified(self, caller, event):
     if caller.GetID() == self.labelSelector.currentNodeID:
       self.resultsTable.visible = False
+      if not self.moduleVisible: # do not calculate values if module is not shown
+        return
       volumeNode = self.inputSelector.currentNode()
       labelNode = self.labelSelector.currentNode()
       labelValue = self.editorWidget.toolsColor.colorSpin.value
@@ -351,6 +362,8 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
       
   def calculateIndicesFromCurrentLabel(self, labelValue):
     self.resultsTable.visible = False
+    if not self.moduleVisible: # do not calculate values if module is not shown
+      return
     volumeNode = self.inputSelector.currentNode()
     labelNode = self.labelSelector.currentNode()
     if labelValue > 0:
