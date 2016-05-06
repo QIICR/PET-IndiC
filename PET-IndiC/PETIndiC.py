@@ -208,7 +208,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     self.preset2Button.connect('clicked(bool)',self.onPreset2Button)
     self.preset3Button.connect('clicked(bool)',self.onPreset3Button)
     self.preset4Button.connect('clicked(bool)',self.onPreset4Button)
-    # moved to enter() method self.editorWidget.toolsColor.colorSpin.connect('valueChanged(int)', self.calculateIndicesFromCurrentLabel)
+    self.editorWidget.toolsColor.colorSpin.connect('valueChanged(int)', self.calculateIndicesFromCurrentLabel)
     self.MeanCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
     self.StdDevCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
     self.MinCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
