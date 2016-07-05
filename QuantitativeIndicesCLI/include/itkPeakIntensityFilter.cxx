@@ -26,7 +26,7 @@ PeakIntensityFilter<TImage, TLabelImage>
   m_SphereRadius.Fill(r); // approx. 1cc sphere
   m_UseInteriorOnly = true;
   m_UseApproximateKernel = false;
-  m_SamplingFactor = 20;
+  m_SamplingFactor = 10;
 }
 
 //----------------------------------------------------------------------------
