@@ -42,11 +42,9 @@ public:
   
   /** Set/Get functions for the images, in const and non-const form */
   void SetInputImage( const ImageType* input );
-  void SetInputImage( ImageType* input );
   void SetInputLabelImage( const LabelImageType* input );
-  void SetInputLabelImage( LabelImageType* input );
-  ImagePointer GetInputImage() const;
-  LabelImagePointer GetInputLabelImage() const;
+  ImageConstPointer GetInputImage() const;
+  LabelImageConstPointer GetInputLabelImage() const;
 
   /** Set/Get functions for the various values */
   itkSetMacro(CurrentLabel, LabelPixelType);

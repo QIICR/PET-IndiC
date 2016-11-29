@@ -52,24 +52,8 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
 ::SetInputImage( const ImageType* input )
 {
 // Process object is not const-correct so the const_cast is required here
-  this->ProcessObject::SetNthInput(0, input);
+  this->ProcessObject::SetNthInput(0, const_cast< ImageType * >(input));
 }
-
-//----------------------------------------------------------------------------
-/*
-SetInputImage
-Sets the input volume, expected to be PET data.
-
-*/
-template <class TImage, class TLabelImage>
-void
-QuantitativeIndicesComputationFilter<TImage, TLabelImage>
-::SetInputImage( ImageType* input )
-{
-// Process object is not const-correct so the const_cast is required here
-  this->ProcessObject::SetNthInput(0, input);
-}
-
 
 //----------------------------------------------------------------------------
 /*
@@ -79,7 +63,7 @@ Returns the input image volume.
 */
 template <class TImage, class TLabelImage>
 typename QuantitativeIndicesComputationFilter<TImage, TLabelImage>
-::ImagePointer
+::ImageConstPointer
 QuantitativeIndicesComputationFilter<TImage, TLabelImage>
 ::GetInputImage() const
 {
@@ -87,9 +71,7 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
   { return NULL;  }
   else
   {
-    ImagePointer image = ImageType::New();
-    image->Graft(this->ProcessObject::GetInput(0));
-    return image;
+    return ImageConstPointer(static_cast< const ImageType* >( this->ProcessObject::GetInput(0) ));
   }
 }
 
@@ -106,24 +88,8 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
 ::SetInputLabelImage( const LabelImageType* input )
 {
 // Process object is not const-correct so the const_cast is required here
-  this->ProcessObject::SetNthInput(1, input);//this->ProcessObject::SetNthInput( 0, const_cast< HistogramType * >( input ) );
+  this->ProcessObject::SetNthInput(1, const_cast< LabelImageType * >(input));
 }
-
-//----------------------------------------------------------------------------
-/*
-SetInputLabelImage
-Sets the label volume for the iput volume.
-
-*/
-template <class TImage, class TLabelImage>
-void
-QuantitativeIndicesComputationFilter<TImage, TLabelImage>
-::SetInputLabelImage( LabelImageType*  input )
-{
-// Process object is not const-correct so the const_cast is required here
-  this->ProcessObject::SetNthInput(1, /*const_cast< const LabelImageType* >*/(input));//this->ProcessObject::SetNthInput( 0, const_cast< HistogramType * >( input ) );
-}
-
 
 //----------------------------------------------------------------------------
 /*
@@ -133,7 +99,7 @@ Returns the label image volume.
 */
 template <class TImage, class TLabelImage>
 typename QuantitativeIndicesComputationFilter<TImage, TLabelImage>
-::LabelImagePointer
+::LabelImageConstPointer
 QuantitativeIndicesComputationFilter<TImage, TLabelImage>
 ::GetInputLabelImage() const
 {
@@ -141,11 +107,8 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
   { return NULL;  }
   else
   {
-    LabelImagePointer labelImage = LabelImageType::New();
-    labelImage->Graft(this->ProcessObject::GetInput(1));
-    return labelImage;
+    return LabelImageConstPointer(static_cast< const LabelImageType* >( this->ProcessObject::GetInput(1) ));
   }
-  //{ return static_cast< LabelImageConstPointer >( this->ProcessObject::GetInput(1) );  }
 }
 
 //----------------------------------------------------------------------------
@@ -174,8 +137,8 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
   typedef itk::ImageRegionConstIterator<ImageType>  InputIteratorType;
   typedef itk::ImageRegionConstIterator<LabelImageType>  LabelIteratorType;
 
-  ImagePointer inputImage = this->GetInputImage();
-  LabelImagePointer inputLabel = this->GetInputLabelImage();
+  ImageConstPointer inputImage = this->GetInputImage();
+  LabelImageConstPointer inputLabel = this->GetInputLabelImage();
   
   double d_maximumValue = itk::NumericTraits<double>::min();
   double d_minimumValue = itk::NumericTraits<double>::max();
@@ -246,7 +209,7 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
   double sum3 = 0.0;
   double sum4 = 0.0;
 
-  ImagePointer inputImage = this->GetInputImage();
+  ImageConstPointer inputImage = this->GetInputImage();
   typename ImageType::SpacingType spacing = inputImage->GetSpacing();
 
   //Need to store all segmented values for some computations
@@ -432,8 +395,8 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
   typedef itk::ImageRegionConstIterator<ImageType>  InputIteratorType;
   typedef itk::ImageRegionConstIterator<LabelImageType>  LabelIteratorType;
 
-  ImagePointer inputImage = this->GetInputImage();
-  LabelImagePointer inputLabel = this->GetInputLabelImage();
+  ImageConstPointer inputImage = this->GetInputImage();
+  LabelImageConstPointer inputLabel = this->GetInputLabelImage();
 
   typename ImageType::SpacingType spacing = inputImage->GetSpacing();
   double voxelSize = spacing[0] * spacing[1] * spacing[2];

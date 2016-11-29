@@ -96,24 +96,8 @@ PeakIntensityFilter<TImage, TLabelImage>
 ::SetInputImage( const ImageType* input )
 {
   // Process object is not const-correct so the const_cast is required here
-  this->ProcessObject::SetNthInput(0, input);
+  this->ProcessObject::SetNthInput(0, const_cast< ImageType * >(input));
 }
-
-//----------------------------------------------------------------------------
-/*
-SetInputImage
-Sets the input volume.
-
-*/
-template <class TImage, class TLabelImage>
-void
-PeakIntensityFilter<TImage, TLabelImage>
-::SetInputImage( ImageType* input )
-{
-  // Process object is not const-correct so the const_cast is required here
-  this->ProcessObject::SetNthInput(0, input);
-}
-
 
 //----------------------------------------------------------------------------
 /*
@@ -123,7 +107,7 @@ Returns the input image volume.
 */
 template <class TImage, class TLabelImage>
 typename PeakIntensityFilter<TImage, TLabelImage>
-::ImagePointer
+::ImageConstPointer
 PeakIntensityFilter<TImage, TLabelImage>
 ::GetInputImage() const
 {
@@ -131,9 +115,7 @@ PeakIntensityFilter<TImage, TLabelImage>
   { return NULL;  }
   else
   {
-    ImagePointer image = ImageType::New();
-    image->Graft(this->ProcessObject::GetInput(0));
-    return image;
+    return ImageConstPointer(static_cast< const ImageType* >( this->ProcessObject::GetInput(0) ));
   }
 }
 
@@ -150,24 +132,8 @@ PeakIntensityFilter<TImage, TLabelImage>
 ::SetInputLabelImage( const LabelImageType* input )
 {
   // Process object is not const-correct so the const_cast is required here
-  this->ProcessObject::SetNthInput(1, input);//this->ProcessObject::SetNthInput( 0, const_cast< HistogramType * >( input ) );
+  this->ProcessObject::SetNthInput(1, const_cast< LabelImageType * >(input));
 }
-
-//----------------------------------------------------------------------------
-/*
-SetInputLabelImage
-Sets the label volume for the input volume.
-
-*/
-template <class TImage, class TLabelImage>
-void
-PeakIntensityFilter<TImage, TLabelImage>
-::SetInputLabelImage( LabelImageType*  input )
-{
-  // Process object is not const-correct so the const_cast is required here
-  this->ProcessObject::SetNthInput(1, /*const_cast< const LabelImageType* >*/(input));//this->ProcessObject::SetNthInput( 0, const_cast< HistogramType * >( input ) );
-}
-
 
 //----------------------------------------------------------------------------
 /*
@@ -177,7 +143,7 @@ Returns the label image volume.
 */
 template <class TImage, class TLabelImage>
 typename PeakIntensityFilter<TImage, TLabelImage>
-::LabelImagePointer
+::LabelImageConstPointer
 PeakIntensityFilter<TImage, TLabelImage>
 ::GetInputLabelImage() const
 {
@@ -185,11 +151,8 @@ PeakIntensityFilter<TImage, TLabelImage>
   { return NULL;  }
   else
   {
-    LabelImagePointer labelImage = LabelImageType::New();
-    labelImage->Graft(this->ProcessObject::GetInput(1));
-    return labelImage;
+    return LabelImageConstPointer(static_cast< const LabelImageType* >( this->ProcessObject::GetInput(1) ));
   }
-  //{ return static_cast< LabelImageConstPointer >( this->ProcessObject::GetInput(1) );  }
 }
 
 //----------------------------------------------------------------------------
@@ -198,7 +161,6 @@ void
 PeakIntensityFilter<TImage, TLabelImage>
 ::GenerateData()
 {
-//std::cout << "    GenerateData()\n";
   this->CalculatePeak();
 }
 
@@ -214,9 +176,9 @@ void
 PeakIntensityFilter<TImage, TLabelImage>
 ::ExtractLabelRegion()
 {
-//std::cout << "  ExtractLabelRegion()\n";
-  ImagePointer inputImage = this->GetInputImage();
-  LabelImagePointer inputLabel = this->GetInputLabelImage();
+
+  ImageConstPointer inputImage = this->GetInputImage();
+  LabelImageConstPointer inputLabel = this->GetInputLabelImage();
   m_CroppedInputImage = ImageType::New();
   m_CroppedLabelImage = LabelImageType::New();
   
@@ -307,8 +269,8 @@ PeakIntensityFilter<TImage, TLabelImage>
 ::BuildPeakKernel()
 {
 //std::cout << "  BuildPeakKernel()\n";
-  ImagePointer inputImage = this->GetInputImage();
-  LabelImagePointer labelImage = this->GetInputLabelImage();
+  ImageConstPointer inputImage = this->GetInputImage();
+  LabelImageConstPointer labelImage = this->GetInputLabelImage();
   SpacingType voxelSize = inputImage->GetSpacing();
 
   // build the full-resolution image of the kernel
@@ -555,8 +517,8 @@ PeakIntensityFilter<TImage, TLabelImage>
 ::ApproximatePeakKernel()
 {
 //std::cout << "  ApproximatePeakKernel()\n";
-  ImagePointer inputImage = this->GetInputImage();
-  LabelImagePointer labelImage = this->GetInputLabelImage();
+  ImageConstPointer inputImage = this->GetInputImage();
+  LabelImageConstPointer labelImage = this->GetInputLabelImage();
   SpacingType voxelSize = inputImage->GetSpacing();
   
   // build a higher-resolution image of the kernel
