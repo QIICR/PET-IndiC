@@ -3,6 +3,7 @@ import unittest
 from __main__ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
+from SegmentStatistics import SegmentStatisticsCalculatorBase, SegmentStatisticsLogic
 
 #
 # PETIndiC
@@ -26,6 +27,162 @@ class PETIndiC(ScriptedLoadableModule):
     ."""
     self.parent.acknowledgementText = """
     This work is funded in part by Quantitative Imaging to Assess Response in Cancer Therapy Trials NIH grant U01-CA140206 and Quantitative Image Informatics for Cancer Research (QIICR) NIH grant U24 CA180918.""" # replace with organization, grant and thanks.
+    
+    # register segment statistics calculator
+    petCalculator = PETVolumeStatisticsCalculator()
+    SegmentStatisticsLogic.registerCalculator( petCalculator )
+
+class PETVolumeStatisticsCalculator(SegmentStatisticsCalculatorBase):
+
+  def __init__(self):
+    super(PETVolumeStatisticsCalculator,self).__init__()
+    self.name = "PET Volume Statistics"
+    self.keys = ("PT mean", "PT std", "PT min", "PT max", "PT rms", "PT volume", "PT 1st quartile", "PT median", "PT 3rd quartile",
+                 "PT upper adjacent", "PT TLG", "PT glycosis Q1", "PT glycosis Q2", "PT glycosis Q3", "PT glycosis Q4", 
+                 "PT Q1 distribution", "PT Q2 distribution", "PT Q3 distribution", "PT Q4 distribution", "PT SAM", 
+                 "PT SAM BG", "PT peak")
+    self.defaultKeys = ("PT mean", "PT volume", "PT TLG", "PT peak")
+    super(PETVolumeStatisticsCalculator,self).createDefaultOptionsWidget()
+    self.key2cliFeatureName = {'PT mean':'Mean', 'PT std':'Std_Deviation', 'PT min':'Min', 'PT max':'Max',
+        'PT rms':'RMS', 'PT volume':'Volume', 'PT 1st quartile':'First_Quartile', 'PT median':'Median',
+        'PT 3rd quartile':'Third_Quartile', 'PT upper adjacent':'Upper_Adjacent', 'PT TLG':'TLG',
+        'PT glycosis Q1':'Glycolysis_Q1', 'PT glycosis Q2':'Glycolysis_Q2', 'PT glycosis Q3':'Glycolysis_Q3',
+        'PT glycosis Q4':'Glycolysis_Q4', 'PT Q1 distribution':'Q1_Distribution',
+        'PT Q2 distribution':'Q2_Distribution', 'PT Q3 distribution':'Q3_Distribution',
+        'PT Q4 distribution':'Q4_Distribution', 'PT SAM':'SAM', 'PT SAM BG':'SAM_Background',
+        'PT peak':'Peak'}
+    
+  def createLabelNodeFromSegment(self, segmentationNode, segmentID, grayscaleNode):
+    import vtkSegmentationCorePython as vtkSegmentationCore
+    # Get geometry of grayscale volume node as oriented image data
+    referenceGeometry_Reference = vtkSegmentationCore.vtkOrientedImageData() # reference geometry in reference node coordinate system
+    referenceGeometry_Reference.SetExtent(grayscaleNode.GetImageData().GetExtent())
+    ijkToRasMatrix = vtk.vtkMatrix4x4()
+    grayscaleNode.GetIJKToRASMatrix(ijkToRasMatrix)
+    referenceGeometry_Reference.SetGeometryFromImageToWorldMatrix(ijkToRasMatrix)
+
+    # Get transform between grayscale volume and segmentation
+    segmentationToReferenceGeometryTransform = vtk.vtkGeneralTransform()
+    slicer.vtkMRMLTransformNode.GetTransformBetweenNodes(segmentationNode.GetParentTransformNode(),
+      grayscaleNode.GetParentTransformNode(), segmentationToReferenceGeometryTransform)
+
+    segment = segmentationNode.GetSegmentation().GetSegment(segmentID)
+    segmentLabelmap = segment.GetRepresentation(vtkSegmentationCore.vtkSegmentationConverter.GetSegmentationBinaryLabelmapRepresentationName())
+
+    segmentLabelmap_Reference = vtkSegmentationCore.vtkOrientedImageData()
+    vtkSegmentationCore.vtkOrientedImageDataResample.ResampleOrientedImageToReferenceOrientedImage(
+    segmentLabelmap, referenceGeometry_Reference, segmentLabelmap_Reference,
+    False, # nearest neighbor interpolation
+    False, # no padding
+    segmentationToReferenceGeometryTransform)
+    
+    # see https://github.com/QIICR/QuantitativeReporting/blob/master/QuantitativeReporting.py#L847
+    labelNode = slicer.vtkMRMLLabelMapVolumeNode()
+    
+    segmentationsLogic = slicer.modules.segmentations.logic()
+    labelMap = segmentationNode.GetBinaryLabelmapRepresentation(segmentID)
+    if not segmentationsLogic.CreateLabelmapVolumeFromOrientedImageData(labelMap, labelNode):
+      return None
+    labelNode.SetName("{}_label".format(segmentID))
+    return labelNode
+    
+  def computeStatistics(self, segmentationNode, segmentID, grayscaleNode):
+    import vtkSegmentationCorePython as vtkSegmentationCore
+    requestedKeys = self.getRequestedKeys()
+
+    if len(requestedKeys)==0:
+      return {}
+
+    containsLabelmapRepresentation = segmentationNode.GetSegmentation().ContainsRepresentation(
+      vtkSegmentationCore.vtkSegmentationConverter.GetSegmentationBinaryLabelmapRepresentationName())
+    if not containsLabelmapRepresentation:
+      return {}
+
+    if grayscaleNode is None or grayscaleNode.GetImageData() is None:
+      return {}
+    
+    labelNode = self.createLabelNodeFromSegment( segmentationNode, segmentID, grayscaleNode )
+    if not labelNode or not labelNode.GetImageData() or labelNode.GetImageData().GetDimensions()[0]==0: # empty segmentation
+      return {}
+    slicer.mrmlScene.AddNode(labelNode)
+    resultMap = {}
+    try:
+      parameters = {}
+      parameters['Grayscale_Image'] = grayscaleNode.GetID()
+      parameters['Label_Image'] = labelNode.GetID()
+      parameters['Label_Value'] = 1
+      for key in requestedKeys:
+        cliFeatureName = self.key2cliFeatureName[key]
+        parameters[cliFeatureName] = 'true'
+        
+      qiModule = slicer.modules.quantitativeindicescli
+      cliNode = None
+      cliNode = slicer.cli.run(qiModule,cliNode,parameters,wait_for_completion=True)
+    
+      for i in xrange(0,cliNode.GetNumberOfParametersInGroup(3)):
+        newResult = cliNode.GetParameterDefault(3,i)
+        if (newResult != '--'):
+          feature = cliNode.GetParameterName(3,i)
+          feature = feature.replace('_s','')
+          resultMap[feature]=float(newResult)
+      
+    finally:
+      slicer.mrmlScene.RemoveNode(labelNode)
+                          
+    statistics = {}
+    for key in requestedKeys:
+      cliFeatureName = self.key2cliFeatureName[key]
+      if cliFeatureName in resultMap:
+        statistics[key] = resultMap[cliFeatureName]
+    return statistics
+    
+  def getMeasurementInfo(self, key, segmentationNode=None, grayscaleNode=None):
+    """Get information (name, description, units and DICOM codes) about the measurement for the given key"""
+    info = {}
+    # fixed values
+    info['PT mean'] = {'name': 'mean', 'description': 'mean uptake value', 'DICOM.ModifierRelationship': ('121401','DCM','Derivation'), 'DICOM.ModifierCode': ('R-00317','SRT','Mean')}
+    info['PT std'] = {'name': 'std', 'description': 'standard deviation', 'DICOM.ModifierRelationship': ('121401','DCM','Derivation'), 'DICOM.ModifierCode': ('R-10047','SRT','Standard Deviation')}
+    info['PT min'] = {'name': 'min', 'description': 'minimum uptake value', 'DICOM.ModifierRelationship': ('121401','DCM','Derivation'), 'DICOM.ModifierCode': ('R-404FB','SRT','Minimum')}
+    info['PT max'] = {'name': 'max', 'description': 'maximum uptake value', 'DICOM.ModifierRelationship': ('121401','DCM','Derivation'), 'DICOM.ModifierCode': ('G-A437','SRT','Maximum')}
+    info['PT rms'] = {'name': 'rms', 'description': 'root mean square uptake value', 'DICOM.ModifierRelationship': ('121401','DCM','Derivation'), 'DICOM.ModifierCode': ('C2347976','UMLS','RMS')}
+    info['PT volume'] = {'name': 'volume', 'description': 'sum of segmented voxel volumes', 'units': 'ml', 'DICOM.MeasurementCode': ('G-D705','SRT','Volume'), 'DICOM.ModifierRelationship': ('G-C036','SRT','Measurement Method'), 'DICOM.ModifierCode': ('126030','DCM','Sum of segmented voxel volumes'), 'DICOM.UnitsCode': ('ml','UCUM','Milliliter')}
+    info['PT 1st quartile'] = {'name': '1st quartile', 'description': '1st quartile uptake value', 'DICOM.ModifierRelationship': ('121401','DCM','Derivation'), 'DICOM.ModifierCode': ('250137','99PMP','25th Percentile Value')}
+    info['PT median'] = {'name': 'median', 'description': 'median uptake value', 'DICOM.ModifierRelationship': ('121401','DCM','Derivation'), 'DICOM.ModifierCode': ('R-00319','SRT','Median')}
+    info['PT 3rd quartile'] = {'name': '3rd quartile', 'description': '3rd quartile uptake value', 'DICOM.ModifierRelationship': ('121401','DCM','Derivation'), 'DICOM.ModifierCode': ('250138','99PMP','75th Percentile Value')}
+    info['PT upper adjacent'] = {'name': 'upper adjacent', 'description': 'upper adjacent', 'units': '%', 'DICOM.MeasurementCode': ('250139','99PMP','Upper Adjacent Value'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode': ('%','UCUM','Percent')}
+    info['PT TLG'] = {'name': 'TLG', 'description': 'total lesion glycolysis', 'units': 'g', 'DICOM.MeasurementCode': ('126033','DCM','Total Lesion Glycolysis'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode': ('g','UCUM','Gram')}
+    info['PT glycosis Q1'] = {'name': 'glycolysis Q1', 'description': 'glycolysis within first quarter of intensity range', 'units': 'g', 'DICOM.MeasurementCode': ('250145','99PMP','Glycolysis Within First Quarter of Intensity Range'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode': ('g','UCUM','Gram')}
+    info['PT glycosis Q2'] = {'name': 'glycolysis Q2', 'description': 'glycolysis within second quarter of intensity range', 'units': 'g', 'DICOM.MeasurementCode': ('250146','99PMP','Glycolysis Within Second Quarter of Intensity Range'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode': ('g','UCUM','Gram')}
+    info['PT glycosis Q3'] = {'name': 'glycolysis Q3', 'description': 'glycolysis within third quarter of intensity range', 'units': 'g', 'DICOM.MeasurementCode': ('250147','99PMP','Glycolysis Within Third Quarter of Intensity Range'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode': ('g','UCUM','Gram')}
+    info['PT glycosis Q4'] = {'name': 'glycolysis Q4', 'description': 'glycolysis within fourth quarter of intensity range', 'units': 'g', 'DICOM.MeasurementCode': ('250148','99PMP','Glycolysis Within Fourth Quarter of Intensity Range'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode': ('g','UCUM','Gram')}
+    info['PT Q1 distribution'] = {'name': 'Q1 distribution', 'description': 'percent within fist quarter of intensity range', 'units': '%', 'DICOM.MeasurementCode': ('250140','99PMP','Percent Within First Quarter of Intensity Range'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode':('%','UCUM','Percent')}
+    info['PT Q2 distribution'] = {'name': 'Q2 distribution', 'description': 'percent within second quarter of intensity range', 'units': '%', 'DICOM.MeasurementCode': ('250141','99PMP','Percent Within Second Quarter of Intensity Range'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode':('%','UCUM','Percent')}
+    info['PT Q3 distribution'] = {'name': 'Q3 distribution', 'description': 'percent within third quarter of intensity range', 'units': '%', 'DICOM.MeasurementCode': ('250142','99PMP','Percent Within Third Quarter of Intensity Range'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode':('%','UCUM','Percent')}
+    info['PT Q4 distribution'] = {'name': 'Q4 distribution', 'description': 'percent within fourth quarter of intensity range', 'units': '%', 'DICOM.MeasurementCode': ('250143','99PMP','Percent Within Fourth Quarter of Intensity Range'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode':('%','UCUM','Percent')}
+    info['PT SAM'] = {'name': 'SAM', 'description': 'standardized added metabolic activity', 'DICOM.MeasurementCode': ('126037','DCM','Standardized Added Metabolic Activity'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode': ('g','UCUM','Gram')}
+    info['PT SAM BG'] = {'name': 'SAM background', 'description': 'standardized added metabolic activity background', 'DICOM.MeasurementCode': ('126038','DCM','Standardized Added Metabolic Activity Background'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None}
+    info['PT peak'] = {'name': 'peak', 'description': 'peak value within ROI', 'DICOM.ModifierRelationship': ('121401','DCM','Derivation'), 'DICOM.ModifierCode': ('126031','DCM','Peak Value Within ROI')}
+    
+    # units specific DICOM codes
+    if grayscaleNode and grayscaleNode.GetAttribute("DICOM.MeasurementUnitsCodeValue"):
+      units = grayscaleNode.GetAttribute("DICOM.MeasurementUnitsCodeValue") # for PET DICOMs imported with our extension this is per default "{SUVbw}g/ml"    
+      SUVSpecificMeasurements = ['PT mean', 'PT min', 'PT max', 'PT rms', 'PT 1st quartile', 'PT median', 'PT 3rd quartile', 'PT SAM BG','PT peak']
+      SUVSpecificUnits = {}
+      SUVSpecificMeasurementCode = {}
+      SUVSpecificUnitsCode = {}
+      SUVSpecificUnits['{SUVbw}g/ml'] = '{SUVbw}g/ml'
+      SUVSpecificMeasurementCode['{SUVbw}g/ml'] = ('126401','DCM','SUVbw')
+      SUVSpecificUnitsCode['{SUVbw}g/ml'] = ('{SUVbw}g/ml','UCUM','Standardized Uptake Value body weight')
+      for m in SUVSpecificMeasurements:
+        # only set what has not been specified previously
+        if not 'units' in info[m] and units in SUVSpecificUnits:
+          info[m]['units'] = SUVSpecificUnits[units]
+        if not 'DICOM.MeasurementCode' in info[m] and units in SUVSpecificMeasurementCode:
+          info[m]['DICOM.MeasurementCode'] = SUVSpecificMeasurementCode[units]
+        if not 'DICOM.UnitsCode' in info[m] and units in SUVSpecificUnitsCode:
+          info[m]['DICOM.UnitsCode'] = SUVSpecificUnitsCode[units]    
+    
+    return info[key] if key in info else None
 
 #
 # PETIndiCWidget
@@ -394,7 +551,6 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     newNode = None
     newNode = self.logic.calculateOnLabelModified(volumeNode, labelNode, cliNode, labelValue, self.MeanCheckBox.checked, self.StdDevCheckBox.checked, self.MinCheckBox.checked, self.MaxCheckBox.checked, self.Quart1CheckBox.checked, self.MedianCheckBox.checked, self.Quart3CheckBox.checked, self.UpperAdjacentCheckBox.checked, self.Q1CheckBox.checked, self.Q2CheckBox.checked, self.Q3CheckBox.checked, self.Q4CheckBox.checked, self.Gly1CheckBox.checked, self.Gly2CheckBox.checked, self.Gly3CheckBox.checked, self.Gly4CheckBox.checked, self.TLGCheckBox.checked, self.SAMCheckBox.checked, self.SAMBGCheckBox.checked, self.RMSCheckBox.checked, self.PeakCheckBox.checked, self.VolumeCheckBox.checked)
     return newNode
-
     
   def populateResultsTable(self, vtkMRMLCommandLineModuleNode):
     """Reads the output of QuantitativeIndicesCLI and populates the results table"""
@@ -406,7 +562,6 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
       if (newResult != '--'):
         feature = newNode.GetParameterName(3,i)
         feature = feature.replace('_s','')
-        feature = feature.replace('_',' ')
         resultArray.append([feature,newResult])
     numRows = len(resultArray)
     self.resultsTable.setRowCount(numRows)
@@ -440,8 +595,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     rowHeight = self.resultsTable.rowHeight(0)
     self.resultsTable.setFixedHeight(rowHeight*(numRows+1)+1)
     self.resultsTable.visible = True
-    slicer.mrmlScene.RemoveNode(newNode)
-      
+    slicer.mrmlScene.RemoveNode(newNode)      
 
 #
 # PETIndiCLogic
