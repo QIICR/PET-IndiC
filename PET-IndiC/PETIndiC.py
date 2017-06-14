@@ -170,9 +170,27 @@ class PETVolumeStatisticsCalculator(SegmentStatisticsCalculatorBase):
       SUVSpecificUnits = {}
       SUVSpecificMeasurementCode = {}
       SUVSpecificUnitsCode = {}
+      
       SUVSpecificUnits['{SUVbw}g/ml'] = '{SUVbw}g/ml'
       SUVSpecificMeasurementCode['{SUVbw}g/ml'] = ('126401','DCM','SUVbw')
       SUVSpecificUnitsCode['{SUVbw}g/ml'] = ('{SUVbw}g/ml','UCUM','Standardized Uptake Value body weight')
+      
+      SUVSpecificUnits['{SUVlbm}g/ml'] = '{SUVlbm}g/ml'
+      SUVSpecificMeasurementCode['{SUVlbm}g/ml'] = ('126402','DCM','SUVlbm')
+      SUVSpecificUnitsCode['{SUVlbm}g/ml'] = ('{SUVlbm}g/ml','UCUM','Standardized Uptake Value lean body mass')
+      
+      SUVSpecificUnits['{SUVbsa}g/ml'] = '{SUVbsa}g/ml'
+      SUVSpecificMeasurementCode['{SUVbsa}g/ml'] = ('126403','DCM','SUVbsa')
+      SUVSpecificUnitsCode['{SUVbsa}g/ml'] = ('{SUVbsa}g/ml','UCUM','Standardized Uptake Value body surface area')
+      
+      SUVSpecificUnits['{SUVibw}g/ml'] = '{SUVibw}g/ml'
+      SUVSpecificMeasurementCode['{SUVibw}g/ml'] = ('126404','DCM','SUVibw')
+      SUVSpecificUnitsCode['{SUVibw}g/ml'] = ('{SUVibw}g/ml','UCUM','Standardized Uptake Value ideal body weight')
+
+      SUVSpecificUnits['{SUV}g/ml'] = '{SUV}g/ml'
+      SUVSpecificMeasurementCode['{SUV}g/ml'] = ('126400','DCM','SUV')
+      SUVSpecificUnitsCode['{SUV}g/ml'] = ('{SUV}g/ml','UCUM','Standardized Uptake Value')
+            
       for m in SUVSpecificMeasurements:
         # only set what has not been specified previously
         if not 'units' in info[m] and units in SUVSpecificUnits:
