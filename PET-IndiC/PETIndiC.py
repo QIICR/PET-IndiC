@@ -36,7 +36,7 @@ class PETVolumeStatisticsCalculator(SegmentStatisticsCalculatorBase):
 
   def __init__(self):
     super(PETVolumeStatisticsCalculator,self).__init__()
-    self.name = "PET Volume Statistics"
+    self.name = "PET Volume"
     self.id = "PT"
     self.keys = tuple(self.name+'.'+m for m in ("mean", "std", "min", "max", "rms", "volume",
                 "1st quartile", "median", "3rd quartile", "upper adjacent", "TLG", "glycosis Q1",
