@@ -3,7 +3,7 @@ import unittest
 from __main__ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
-from SegmentStatistics import SegmentStatisticsCalculatorBase, SegmentStatisticsLogic
+from SegmentStatistics import SegmentStatisticsCalculatorBase, SegmentStatisticsLogic, SegmentStatisticsParameterEditorDialog
 
 #
 # PETIndiC
@@ -37,20 +37,22 @@ class PETVolumeStatisticsCalculator(SegmentStatisticsCalculatorBase):
   def __init__(self):
     super(PETVolumeStatisticsCalculator,self).__init__()
     self.name = "PET Volume Statistics"
-    self.keys = ("PT mean", "PT std", "PT min", "PT max", "PT rms", "PT volume", "PT 1st quartile", "PT median", "PT 3rd quartile",
-                 "PT upper adjacent", "PT TLG", "PT glycosis Q1", "PT glycosis Q2", "PT glycosis Q3", "PT glycosis Q4", 
-                 "PT Q1 distribution", "PT Q2 distribution", "PT Q3 distribution", "PT Q4 distribution", "PT SAM", 
-                 "PT SAM BG", "PT peak")
-    self.defaultKeys = ("PT mean", "PT volume", "PT TLG", "PT peak")
+    self.id = "PT"
+    self.keys = tuple(self.name+'.'+m for m in ("mean", "std", "min", "max", "rms", "volume",
+                "1st quartile", "median", "3rd quartile", "upper adjacent", "TLG", "glycosis Q1",
+                "glycosis Q2", "glycosis Q3", "glycosis Q4", "Q1 distribution",
+                "Q2 distribution", "Q3 distribution", "Q4 distribution", "SAM", "SAM BG",
+                "peak"))
+    self.defaultKeys =tuple(self.name+'.'+m for m in ("mean", "volume", "TLG", "peak"))
     super(PETVolumeStatisticsCalculator,self).createDefaultOptionsWidget()
-    self.key2cliFeatureName = {'PT mean':'Mean', 'PT std':'Std_Deviation', 'PT min':'Min', 'PT max':'Max',
-        'PT rms':'RMS', 'PT volume':'Volume', 'PT 1st quartile':'First_Quartile', 'PT median':'Median',
-        'PT 3rd quartile':'Third_Quartile', 'PT upper adjacent':'Upper_Adjacent', 'PT TLG':'TLG',
-        'PT glycosis Q1':'Glycolysis_Q1', 'PT glycosis Q2':'Glycolysis_Q2', 'PT glycosis Q3':'Glycolysis_Q3',
-        'PT glycosis Q4':'Glycolysis_Q4', 'PT Q1 distribution':'Q1_Distribution',
-        'PT Q2 distribution':'Q2_Distribution', 'PT Q3 distribution':'Q3_Distribution',
-        'PT Q4 distribution':'Q4_Distribution', 'PT SAM':'SAM', 'PT SAM BG':'SAM_Background',
-        'PT peak':'Peak'}
+    self.key2cliFeatureName = dict((self.name+'.'+k,v) for k,v in {'mean':'Mean', 'std':'Std_Deviation', 'min':'Min', 'max':'Max',
+        'rms':'RMS', 'volume':'Volume', '1st quartile':'First_Quartile', 'median':'Median',
+        '3rd quartile':'Third_Quartile', 'upper adjacent':'Upper_Adjacent', 'TLG':'TLG',
+        'glycosis Q1':'Glycolysis_Q1', 'glycosis Q2':'Glycolysis_Q2', 'glycosis Q3':'Glycolysis_Q3',
+        'glycosis Q4':'Glycolysis_Q4', 'Q1 distribution':'Q1_Distribution',
+        'Q2 distribution':'Q2_Distribution', 'Q3 distribution':'Q3_Distribution',
+        'Q4 distribution':'Q4_Distribution', 'SAM':'SAM', 'SAM BG':'SAM_Background',
+        'peak':'Peak'}.iteritems())
     
   def createLabelNodeFromSegment(self, segmentationNode, segmentID, grayscaleNode):
     import vtkSegmentationCorePython as vtkSegmentationCore
@@ -86,12 +88,15 @@ class PETVolumeStatisticsCalculator(SegmentStatisticsCalculatorBase):
     labelNode.SetName("{}_label".format(segmentID))
     return labelNode
     
-  def computeStatistics(self, segmentationNode, segmentID, grayscaleNode):
+  def computeStatistics(self, segmentID):
     import vtkSegmentationCorePython as vtkSegmentationCore
     requestedKeys = self.getRequestedKeys()
 
     if len(requestedKeys)==0:
       return {}
+      
+    segmentationNode = slicer.mrmlScene.GetNodeByID(self.getParameterNode().GetParameter("Segmentation"))
+    grayscaleNode = slicer.mrmlScene.GetNodeByID(self.getParameterNode().GetParameter("ScalarVolume"))
 
     containsLabelmapRepresentation = segmentationNode.GetSegmentation().ContainsRepresentation(
       vtkSegmentationCore.vtkSegmentationConverter.GetSegmentationBinaryLabelmapRepresentationName())
@@ -136,70 +141,72 @@ class PETVolumeStatisticsCalculator(SegmentStatisticsCalculatorBase):
         statistics[key] = resultMap[cliFeatureName]
     return statistics
     
-  def getMeasurementInfo(self, key, segmentationNode=None, grayscaleNode=None):
+  def getMeasurementInfo(self, key):
     """Get information (name, description, units and DICOM codes) about the measurement for the given key"""
     info = {}
     # fixed values
-    info['PT mean'] = {'name': 'mean', 'description': 'mean uptake value', 'DICOM.ModifierRelationship': ('121401','DCM','Derivation'), 'DICOM.ModifierCode': ('R-00317','SRT','Mean')}
-    info['PT std'] = {'name': 'std', 'description': 'standard deviation', 'DICOM.ModifierRelationship': ('121401','DCM','Derivation'), 'DICOM.ModifierCode': ('R-10047','SRT','Standard Deviation')}
-    info['PT min'] = {'name': 'min', 'description': 'minimum uptake value', 'DICOM.ModifierRelationship': ('121401','DCM','Derivation'), 'DICOM.ModifierCode': ('R-404FB','SRT','Minimum')}
-    info['PT max'] = {'name': 'max', 'description': 'maximum uptake value', 'DICOM.ModifierRelationship': ('121401','DCM','Derivation'), 'DICOM.ModifierCode': ('G-A437','SRT','Maximum')}
-    info['PT rms'] = {'name': 'rms', 'description': 'root mean square uptake value', 'DICOM.ModifierRelationship': ('121401','DCM','Derivation'), 'DICOM.ModifierCode': ('C2347976','UMLS','RMS')}
-    info['PT volume'] = {'name': 'volume', 'description': 'sum of segmented voxel volumes', 'units': 'ml', 'DICOM.MeasurementCode': ('G-D705','SRT','Volume'), 'DICOM.ModifierRelationship': ('G-C036','SRT','Measurement Method'), 'DICOM.ModifierCode': ('126030','DCM','Sum of segmented voxel volumes'), 'DICOM.UnitsCode': ('ml','UCUM','Milliliter')}
-    info['PT 1st quartile'] = {'name': '1st quartile', 'description': '1st quartile uptake value', 'DICOM.ModifierRelationship': ('121401','DCM','Derivation'), 'DICOM.ModifierCode': ('250137','99PMP','25th Percentile Value')}
-    info['PT median'] = {'name': 'median', 'description': 'median uptake value', 'DICOM.ModifierRelationship': ('121401','DCM','Derivation'), 'DICOM.ModifierCode': ('R-00319','SRT','Median')}
-    info['PT 3rd quartile'] = {'name': '3rd quartile', 'description': '3rd quartile uptake value', 'DICOM.ModifierRelationship': ('121401','DCM','Derivation'), 'DICOM.ModifierCode': ('250138','99PMP','75th Percentile Value')}
-    info['PT upper adjacent'] = {'name': 'upper adjacent', 'description': 'upper adjacent', 'units': '%', 'DICOM.MeasurementCode': ('250139','99PMP','Upper Adjacent Value'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode': ('%','UCUM','Percent')}
-    info['PT TLG'] = {'name': 'TLG', 'description': 'total lesion glycolysis', 'units': 'g', 'DICOM.MeasurementCode': ('126033','DCM','Total Lesion Glycolysis'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode': ('g','UCUM','Gram')}
-    info['PT glycosis Q1'] = {'name': 'glycolysis Q1', 'description': 'glycolysis within first quarter of intensity range', 'units': 'g', 'DICOM.MeasurementCode': ('250145','99PMP','Glycolysis Within First Quarter of Intensity Range'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode': ('g','UCUM','Gram')}
-    info['PT glycosis Q2'] = {'name': 'glycolysis Q2', 'description': 'glycolysis within second quarter of intensity range', 'units': 'g', 'DICOM.MeasurementCode': ('250146','99PMP','Glycolysis Within Second Quarter of Intensity Range'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode': ('g','UCUM','Gram')}
-    info['PT glycosis Q3'] = {'name': 'glycolysis Q3', 'description': 'glycolysis within third quarter of intensity range', 'units': 'g', 'DICOM.MeasurementCode': ('250147','99PMP','Glycolysis Within Third Quarter of Intensity Range'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode': ('g','UCUM','Gram')}
-    info['PT glycosis Q4'] = {'name': 'glycolysis Q4', 'description': 'glycolysis within fourth quarter of intensity range', 'units': 'g', 'DICOM.MeasurementCode': ('250148','99PMP','Glycolysis Within Fourth Quarter of Intensity Range'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode': ('g','UCUM','Gram')}
-    info['PT Q1 distribution'] = {'name': 'Q1 distribution', 'description': 'percent within fist quarter of intensity range', 'units': '%', 'DICOM.MeasurementCode': ('250140','99PMP','Percent Within First Quarter of Intensity Range'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode':('%','UCUM','Percent')}
-    info['PT Q2 distribution'] = {'name': 'Q2 distribution', 'description': 'percent within second quarter of intensity range', 'units': '%', 'DICOM.MeasurementCode': ('250141','99PMP','Percent Within Second Quarter of Intensity Range'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode':('%','UCUM','Percent')}
-    info['PT Q3 distribution'] = {'name': 'Q3 distribution', 'description': 'percent within third quarter of intensity range', 'units': '%', 'DICOM.MeasurementCode': ('250142','99PMP','Percent Within Third Quarter of Intensity Range'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode':('%','UCUM','Percent')}
-    info['PT Q4 distribution'] = {'name': 'Q4 distribution', 'description': 'percent within fourth quarter of intensity range', 'units': '%', 'DICOM.MeasurementCode': ('250143','99PMP','Percent Within Fourth Quarter of Intensity Range'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode':('%','UCUM','Percent')}
-    info['PT SAM'] = {'name': 'SAM', 'description': 'standardized added metabolic activity', 'DICOM.MeasurementCode': ('126037','DCM','Standardized Added Metabolic Activity'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None, 'DICOM.UnitsCode': ('g','UCUM','Gram')}
-    info['PT SAM BG'] = {'name': 'SAM background', 'description': 'standardized added metabolic activity background', 'DICOM.MeasurementCode': ('126038','DCM','Standardized Added Metabolic Activity Background'), 'DICOM.ModifierRelationship': None, 'DICOM.ModifierCode': None}
-    info['PT peak'] = {'name': 'peak', 'description': 'peak value within ROI', 'DICOM.ModifierRelationship': ('121401','DCM','Derivation'), 'DICOM.ModifierCode': ('126031','DCM','Peak Value Within ROI')}
+    info['mean'] = {'name': 'mean', 'description': 'mean uptake value', 'DICOM.DerivationCode': self.getDICOMTriplet('R-00317','SRT','Mean')}
+    info['std'] = {'name': 'std', 'description': 'standard deviation', 'DICOM.DerivationCode': self.getDICOMTriplet('R-10047','SRT','Standard Deviation')}
+    info['min'] = {'name': 'min', 'description': 'minimum uptake value', 'DICOM.DerivationCode': self.getDICOMTriplet('R-404FB','SRT','Minimum')}
+    info['max'] = {'name': 'max', 'description': 'maximum uptake value', 'DICOM.DerivationCode': self.getDICOMTriplet('G-A437','SRT','Maximum')}
+    info['rms'] = {'name': 'rms', 'description': 'root mean square uptake value', 'DICOM.DerivationCode': self.getDICOMTriplet('C2347976','UMLS','RMS')}
+    info['volume'] = {'name': 'volume', 'description': 'sum of segmented voxel volumes', 'units': 'ml', 'DICOM.QuantityCode': self.getDICOMTriplet('G-D705','SRT','Volume'), 'DICOM.MeasurementMethodCode': self.getDICOMTriplet('126030','DCM','Sum of segmented voxel volumes'), 'DICOM.UnitsCode': self.getDICOMTriplet('ml','UCUM','Milliliter')}
+    info['1st quartile'] = {'name': '1st quartile', 'description': '1st quartile uptake value', 'DICOM.DerivationCode': self.getDICOMTriplet('250137','99PMP','25th Percentile Value')}
+    info['median'] = {'name': 'median', 'description': 'median uptake value', 'DICOM.DerivationCode': self.getDICOMTriplet('R-00319','SRT','Median')}
+    info['3rd quartile'] = {'name': '3rd quartile', 'description': '3rd quartile uptake value', 'DICOM.DerivationCode': self.getDICOMTriplet('250138','99PMP','75th Percentile Value')}
+    info['upper adjacent'] = {'name': 'upper adjacent', 'description': 'upper adjacent', 'units': '%', 'DICOM.QuantityCode': self.getDICOMTriplet('250139','99PMP','Upper Adjacent Value'), 'DICOM.DerivationCode': None, 'DICOM.UnitsCode': self.getDICOMTriplet('%','UCUM','Percent')}
+    info['TLG'] = {'name': 'TLG', 'description': 'total lesion glycolysis', 'units': 'g', 'DICOM.QuantityCode': self.getDICOMTriplet('126033','DCM','Total Lesion Glycolysis'), 'DICOM.DerivationCode': None, 'DICOM.UnitsCode': self.getDICOMTriplet('g','UCUM','Gram')}
+    info['glycosis Q1'] = {'name': 'glycolysis Q1', 'description': 'glycolysis within first quarter of intensity range', 'units': 'g', 'DICOM.QuantityCode': self.getDICOMTriplet('250145','99PMP','Glycolysis Within First Quarter of Intensity Range'), 'DICOM.DerivationCode': None, 'DICOM.UnitsCode': self.getDICOMTriplet('g','UCUM','Gram')}
+    info['glycosis Q2'] = {'name': 'glycolysis Q2', 'description': 'glycolysis within second quarter of intensity range', 'units': 'g', 'DICOM.QuantityCode': self.getDICOMTriplet('250146','99PMP','Glycolysis Within Second Quarter of Intensity Range'), 'DICOM.DerivationCode': None, 'DICOM.UnitsCode': self.getDICOMTriplet('g','UCUM','Gram')}
+    info['glycosis Q3'] = {'name': 'glycolysis Q3', 'description': 'glycolysis within third quarter of intensity range', 'units': 'g', 'DICOM.QuantityCode': self.getDICOMTriplet('250147','99PMP','Glycolysis Within Third Quarter of Intensity Range'), 'DICOM.DerivationCode': None, 'DICOM.UnitsCode': self.getDICOMTriplet('g','UCUM','Gram')}
+    info['glycosis Q4'] = {'name': 'glycolysis Q4', 'description': 'glycolysis within fourth quarter of intensity range', 'units': 'g', 'DICOM.QuantityCode': self.getDICOMTriplet('250148','99PMP','Glycolysis Within Fourth Quarter of Intensity Range'), 'DICOM.DerivationCode': None, 'DICOM.UnitsCode': self.getDICOMTriplet('g','UCUM','Gram')}
+    info['Q1 distribution'] = {'name': 'Q1 distribution', 'description': 'percent within fist quarter of intensity range', 'units': '%', 'DICOM.QuantityCode': self.getDICOMTriplet('250140','99PMP','Percent Within First Quarter of Intensity Range'), 'DICOM.DerivationCode': None, 'DICOM.UnitsCode':self.getDICOMTriplet('%','UCUM','Percent')}
+    info['Q2 distribution'] = {'name': 'Q2 distribution', 'description': 'percent within second quarter of intensity range', 'units': '%', 'DICOM.QuantityCode': self.getDICOMTriplet('250141','99PMP','Percent Within Second Quarter of Intensity Range'), 'DICOM.DerivationCode': None, 'DICOM.UnitsCode':self.getDICOMTriplet('%','UCUM','Percent')}
+    info['Q3 distribution'] = {'name': 'Q3 distribution', 'description': 'percent within third quarter of intensity range', 'units': '%', 'DICOM.QuantityCode': self.getDICOMTriplet('250142','99PMP','Percent Within Third Quarter of Intensity Range'), 'DICOM.DerivationCode': None, 'DICOM.UnitsCode':self.getDICOMTriplet('%','UCUM','Percent')}
+    info['Q4 distribution'] = {'name': 'Q4 distribution', 'description': 'percent within fourth quarter of intensity range', 'units': '%', 'DICOM.QuantityCode': self.getDICOMTriplet('250143','99PMP','Percent Within Fourth Quarter of Intensity Range'), 'DICOM.DerivationCode': None, 'DICOM.UnitsCode':self.getDICOMTriplet('%','UCUM','Percent')}
+    info['SAM'] = {'name': 'SAM', 'description': 'standardized added metabolic activity', 'DICOM.QuantityCode': self.getDICOMTriplet('126037','DCM','Standardized Added Metabolic Activity'), 'DICOM.DerivationCode': None, 'DICOM.UnitsCode': self.getDICOMTriplet('g','UCUM','Gram')}
+    info['SAM BG'] = {'name': 'SAM background', 'description': 'standardized added metabolic activity background', 'DICOM.QuantityCode': self.getDICOMTriplet('126038','DCM','Standardized Added Metabolic Activity Background'), 'DICOM.DerivationCode': None}
+    info['peak'] = {'name': 'peak', 'description': 'peak value within ROI', 'DICOM.DerivationCode': self.getDICOMTriplet('126031','DCM','Peak Value Within ROI')}
     
     # units specific DICOM codes
+    grayscaleNode = slicer.mrmlScene.GetNodeByID(self.getParameterNode().GetParameter("ScalarVolume")) if self.getParameterNode() else None
     if grayscaleNode and grayscaleNode.GetAttribute("DICOM.MeasurementUnitsCodeValue"):
       units = grayscaleNode.GetAttribute("DICOM.MeasurementUnitsCodeValue") # for PET DICOMs imported with our extension this is per default "{SUVbw}g/ml"    
-      SUVSpecificMeasurements = ['PT mean', 'PT min', 'PT max', 'PT rms', 'PT 1st quartile', 'PT median', 'PT 3rd quartile', 'PT SAM BG','PT peak']
+      SUVSpecificMeasurements = ['mean', 'min', 'max', 'rms', '1st quartile', 'median', '3rd quartile', 'SAM BG','peak']
       SUVSpecificUnits = {}
       SUVSpecificMeasurementCode = {}
       SUVSpecificUnitsCode = {}
       
       SUVSpecificUnits['{SUVbw}g/ml'] = '{SUVbw}g/ml'
-      SUVSpecificMeasurementCode['{SUVbw}g/ml'] = ('126401','DCM','SUVbw')
-      SUVSpecificUnitsCode['{SUVbw}g/ml'] = ('{SUVbw}g/ml','UCUM','Standardized Uptake Value body weight')
+      SUVSpecificMeasurementCode['{SUVbw}g/ml'] = self.getDICOMTriplet('126401','DCM','SUVbw')
+      SUVSpecificUnitsCode['{SUVbw}g/ml'] = self.getDICOMTriplet('{SUVbw}g/ml','UCUM','Standardized Uptake Value body weight')
       
       SUVSpecificUnits['{SUVlbm}g/ml'] = '{SUVlbm}g/ml'
-      SUVSpecificMeasurementCode['{SUVlbm}g/ml'] = ('126402','DCM','SUVlbm')
-      SUVSpecificUnitsCode['{SUVlbm}g/ml'] = ('{SUVlbm}g/ml','UCUM','Standardized Uptake Value lean body mass')
+      SUVSpecificMeasurementCode['{SUVlbm}g/ml'] = self.getDICOMTriplet('126402','DCM','SUVlbm')
+      SUVSpecificUnitsCode['{SUVlbm}g/ml'] = self.getDICOMTriplet('{SUVlbm}g/ml','UCUM','Standardized Uptake Value lean body mass')
       
       SUVSpecificUnits['{SUVbsa}g/ml'] = '{SUVbsa}g/ml'
-      SUVSpecificMeasurementCode['{SUVbsa}g/ml'] = ('126403','DCM','SUVbsa')
-      SUVSpecificUnitsCode['{SUVbsa}g/ml'] = ('{SUVbsa}g/ml','UCUM','Standardized Uptake Value body surface area')
+      SUVSpecificMeasurementCode['{SUVbsa}g/ml'] = self.getDICOMTriplet('126403','DCM','SUVbsa')
+      SUVSpecificUnitsCode['{SUVbsa}g/ml'] = self.getDICOMTriplet('{SUVbsa}g/ml','UCUM','Standardized Uptake Value body surface area')
       
       SUVSpecificUnits['{SUVibw}g/ml'] = '{SUVibw}g/ml'
-      SUVSpecificMeasurementCode['{SUVibw}g/ml'] = ('126404','DCM','SUVibw')
-      SUVSpecificUnitsCode['{SUVibw}g/ml'] = ('{SUVibw}g/ml','UCUM','Standardized Uptake Value ideal body weight')
+      SUVSpecificMeasurementCode['{SUVibw}g/ml'] = self.getDICOMTriplet('126404','DCM','SUVibw')
+      SUVSpecificUnitsCode['{SUVibw}g/ml'] = self.getDICOMTriplet('{SUVibw}g/ml','UCUM','Standardized Uptake Value ideal body weight')
 
       SUVSpecificUnits['{SUV}g/ml'] = '{SUV}g/ml'
-      SUVSpecificMeasurementCode['{SUV}g/ml'] = ('126400','DCM','SUV')
-      SUVSpecificUnitsCode['{SUV}g/ml'] = ('{SUV}g/ml','UCUM','Standardized Uptake Value')
+      SUVSpecificMeasurementCode['{SUV}g/ml'] = self.getDICOMTriplet('126400','DCM','SUV')
+      SUVSpecificUnitsCode['{SUV}g/ml'] = self.getDICOMTriplet('{SUV}g/ml','UCUM','Standardized Uptake Value')
             
       for m in SUVSpecificMeasurements:
         # only set what has not been specified previously
         if not 'units' in info[m] and units in SUVSpecificUnits:
           info[m]['units'] = SUVSpecificUnits[units]
-        if not 'DICOM.MeasurementCode' in info[m] and units in SUVSpecificMeasurementCode:
-          info[m]['DICOM.MeasurementCode'] = SUVSpecificMeasurementCode[units]
+        if not 'DICOM.QuantityCode' in info[m] and units in SUVSpecificMeasurementCode:
+          info[m]['DICOM.QuantityCode'] = SUVSpecificMeasurementCode[units]
         if not 'DICOM.UnitsCode' in info[m] and units in SUVSpecificUnitsCode:
-          info[m]['DICOM.UnitsCode'] = SUVSpecificUnitsCode[units]    
-    
+          info[m]['DICOM.UnitsCode'] = SUVSpecificUnitsCode[units]
+    if key.startswith(self.name+'.'):
+      key = key[len(self.name+'.'):]
     return info[key] if key in info else None
 
 #
@@ -730,7 +737,7 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
     return node
     
   def getUnitsForIndex(self, imageUnits, indexName):
-    """Attempt to interpret units """
+    """Attemto interpret units """
     if imageUnits not in ['{SUVbw}g/ml','{SUVlbm}g/ml','{SUVibw}g/ml']: # TODO '{SUVbsa}cm2/ml'
       print('WARNING: could not interpret units for '+ indexName +'. Units: '+ imageUnits)
       return '-'
