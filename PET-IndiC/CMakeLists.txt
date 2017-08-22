@@ -4,6 +4,8 @@ set(MODULE_NAME PETIndiC)
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
+  PETVolumeSegmentStatisticsPlugin/__init__.py
+  PETVolumeSegmentStatisticsPlugin/PETVolumeSegmentStatisticsPlugin.py
   )
 
 set(MODULE_PYTHON_RESOURCES
