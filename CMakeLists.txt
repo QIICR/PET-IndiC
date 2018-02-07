@@ -21,8 +21,10 @@ include(${Slicer_USE_FILE})
 add_subdirectory(PET-IndiC)
 add_subdirectory(QuantitativeIndicesCLI)
 add_subdirectory(QuantitativeIndicesTool)
+add_subdirectory(Testing)
 
 #-----------------------------------------------------------------------------
+include(${Slicer_EXTENSION_GENERATE_CONFIG})
 include(${Slicer_EXTENSION_CPACK})
 
 #-----------------------------------------------------------------------------

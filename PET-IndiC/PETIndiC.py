@@ -45,6 +45,8 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
     self.logic = PETIndiCLogic()
+    
+    self.moduleVisible = True
 
     sliceNodes = slicer.util.getNodes('vtkMRMLSliceNode*')
     for sliceNode in sliceNodes:
@@ -410,7 +412,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
       newResult = newNode.GetParameterDefault(3,i)
       if (newResult != '--'):
         feature = newNode.GetParameterName(3,i)
-        feature = feature.replace('_s','')
+        feature = feature.replace('_s','').replace('_',' ')
         resultArray.append([feature,newResult])
     numRows = len(resultArray)
     self.resultsTable.setRowCount(numRows)
@@ -542,17 +544,19 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
     displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeGrey')
 
   def getImageUnits(self, imageNode):
-    """Search for units in the image node attributes """
+    """Search for units in the image node attributes or voxel value units"""
     units = '(could not retrieve units information)'
     if imageNode.GetAttribute('DICOM.MeasurementUnitsCodeValue'):
       units = imageNode.GetAttribute('DICOM.MeasurementUnitsCodeValue')
+    elif imageNode.GetVoxelValueUnits():
+      units =  imageNode.GetVoxelValueUnits().GetCodeValue()
     return units
     
   def calculateOnLabelModified(self, scalarVolume, labelVolume, cliNode, labelValue, meanFlag, stddevFlag, minFlag,
                         maxFlag, quart1Flag, medianFlag, quart3Flag, upperAdjacentFlag, q1Flag, q2Flag, q3Flag, 
                         q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag, TLGFlag, SAMFlag, SAMBGFlag, RMSFlag, 
                         PeakFlag, VolumeFlag):
-    print('      Recalculating QIs')
+    #print('      Recalculating QIs')
     qiLogic = slicer.modules.QuantitativeIndicesToolWidget.logic
     node = qiLogic.run(scalarVolume,labelVolume,cliNode,labelValue,meanFlag, stddevFlag, minFlag,
                         maxFlag, quart1Flag, medianFlag, quart3Flag, upperAdjacentFlag, q1Flag, q2Flag, q3Flag, 
@@ -664,7 +668,7 @@ class CustomTableWidget(qt.QTableWidget):
           cells.append([row,col])
     return cells
     
-
+from DICOMLib import DICOMUtils
 class PETIndiCTest(ScriptedLoadableModuleTest):
   """
   This is the test case for your scripted module.
@@ -672,49 +676,179 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
-  def setUp(self):
-    """ Do whatever is needed to reset the state - typically a scene clear will be enough.
-    """
-    slicer.mrmlScene.Clear(0)
-
   def runTest(self):
     """Run as few or as many tests as needed here.
     """
     self.setUp()
-    self.test_PETIndiC1()
-
-  def test_PETIndiC1(self):
-    """ Ideally you should have several levels of tests.  At the lowest level
-    tests should exercise the functionality of the logic with different inputs
-    (both valid and invalid).  At higher levels your tests should emulate the
-    way the user would interact with your code and confirm that it still works
-    the way you intended.
-    One of the most important features of the tests is that it should alert other
-    developers when their changes will have an impact on the behavior of your
-    module.  For example, if a developer removes a feature that you depend on,
-    your test should break so they know that the feature is needed.
+    self.test_PETIndiC()
+    self.tearDown()
+    
+  def setUp(self):
+    """ Open temporary DICOM database
     """
+    slicer.mrmlScene.Clear(0)
+    self.tempDicomDatabase = os.path.join(slicer.app.temporaryPath,'PETTest')
+    self.originalDicomDatabase = DICOMUtils.openTemporaryDatabase(self.tempDicomDatabase)
 
-    self.delayDisplay("Starting the test")
-    #
-    # first, get some data
-    #
+  def doCleanups(self):
+    """ cleanup temporary data in case an exception occurs
+    """ 
+    self.tearDown()    
+  
+  def tearDown(self):
+    """ Close temporary DICOM database and remove temporary data
+    """ 
+    import shutil
+    if self.originalDicomDatabase:
+      DICOMUtils.closeTemporaryDatabase(self.originalDicomDatabase, True)
+      shutil.rmtree(self.tempDicomDatabase) # closeTemporaryDatabase cleanup doesn't work. We need to do it manually
+      self.originalDicomDatabase = None
+  
+  def loadTestData(self):
+    """ load SUV normalized PET scan from DICOM file
+    """ 
     import urllib
-    downloads = (
-        ('http://slicer.kitware.com/midas3/download?items=5767', 'FA.nrrd', slicer.util.loadVolume),
-        )
-
-    for url,name,loader in downloads:
-      filePath = slicer.app.temporaryPath + '/' + name
+    UID = '1.3.6.1.4.1.14519.5.2.1.2744.7002.886851941687931416391879144903'  
+    quantity = slicer.vtkCodedEntry()
+    quantity.SetFromString('CodeValue:126400|CodingSchemeDesignator:DCM|CodeMeaning:Standardized Uptake Value')
+    units = slicer.vtkCodedEntry()
+    units.SetFromString('CodeValue:{SUVbw}g/ml|CodingSchemeDesignator:UCUM|CodeMeaning:Standardized Uptake Value body weight')      
+    url = 'http://slicer.kitware.com/midas3/download/item/257234/QIN-HEADNECK-01-0139-PET.zip'
+    zipFile = 'QIN-HEADNECK-01-0139-PET.zip'
+    suvNormalizationFactor = 0.00040166400000000007
+    destinationDirectory = self.tempDicomDatabase
+    filePath = os.path.join(destinationDirectory, zipFile)
+    # download dataset if necessary
+    if not len(slicer.dicomDatabase.filesForSeries(UID)):
+      filePath = os.path.join(destinationDirectory, zipFile)
+      if not os.path.exists(os.path.dirname(filePath)):
+        os.makedirs(os.path.dirname(filePath))
+      logging.debug('Saving download %s to %s ' % (url, filePath))
       if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
-        logging.info('Requesting download %s from %s...\n' % (name, url))
+        slicer.util.delayDisplay('Requesting download of %s...\n' % url, 1000)
         urllib.urlretrieve(url, filePath)
-      if loader:
-        logging.info('Loading %s...' % (name,))
-        loader(filePath)
-    self.delayDisplay('Finished with download and loading')
-
-    volumeNode = slicer.util.getNode(pattern="FA")
-    logic = PETIndiCLogic()
-    self.assertTrue( logic.hasImageData(volumeNode) )
+      if os.path.exists(filePath) and os.path.splitext(filePath)[1]=='.zip':
+        success = slicer.app.applicationLogic().Unzip(filePath, destinationDirectory)
+        if not success:
+          logging.error("Archive %s was NOT unzipped successfully." %  filePath)
+      indexer = ctk.ctkDICOMIndexer()
+      indexer.addDirectory(slicer.dicomDatabase, destinationDirectory, None)
+      indexer.waitForImportFinished()
+      
+    # load dataset and as SUVbw; disable all other DICOM plugings to assure we get the "right" type
+    dicomWidget = slicer.modules.dicom.widgetRepresentation().self()
+    dicomPluginCheckbox =  dicomWidget.detailsPopup.pluginSelector.checkBoxByPlugin
+    dicomPluginStates = {(key,value.checked) for key,value in dicomPluginCheckbox.iteritems()}
+    for cb in dicomPluginCheckbox.itervalues(): cb.checked=False
+    dicomPluginCheckbox['DICOMScalarVolumePlugin'].checked = True
+    DICOMUtils.loadSeriesByUID([UID])    
+    for key,value in dicomPluginStates:
+      dicomPluginCheckbox[key].checked=value
+    imageNode = slicer.mrmlScene.GetFirstNodeByClass('vtkMRMLScalarVolumeNode')
+    if not imageNode:
+      logging.error("Volume not loaded\n.")
+      
+    # apply the SUVbw conversion factor and set units and quantity
+    multiplier = vtk.vtkImageMathematics()
+    multiplier.SetOperationToMultiplyByK()
+    multiplier.SetConstantK(suvNormalizationFactor)
+    multiplier.SetInput1Data(imageNode.GetImageData())
+    multiplier.Update()
+    imageNode.GetImageData().DeepCopy(multiplier.GetOutput())
+    imageNode.GetVolumeDisplayNode().SetWindowLevel(6,3)
+    imageNode.GetVolumeDisplayNode().SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
+    imageNode.SetVoxelValueQuantity(quantity)
+    imageNode.SetVoxelValueUnits(units)    
+    
+    return imageNode
+    
+  def test_PETIndiC(self):
+    """ test standard segmentation and report generation
+    """ 
+    self.delayDisplay('Loading PET DICOM dataset (including download if necessary)')
+    petNode = self.loadTestData()
+    #petNode = slicer.mrmlScene.GetFirstNodeByClass('vtkMRMLScalarVolumeNode')
+    m = slicer.util.mainWindow()
+    m.moduleSelector().selectModule('PETIndiC') # not PET-IndiC here
+    widget = slicer.modules.PETIndiCWidget
+    widget.inputSelector.setCurrentNode(petNode)
+    labelNode = widget.labelSelector.currentNode()
+    self.assertIsNotNone(labelNode)
+    
+    self.delayDisplay('Producing segmentation')
+    widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
+    thresholdOptions = widget.editorWidget.toolsBox.currentOption
+    thresholdOptions.threshold.minimumValue = 30
+    thresholdOptions.threshold.maximumValue = 10000
+    thresholdOptions.onApply()
+    
+    self.delayDisplay('Checking initial measurement results')
+    t = widget.resultsTable
+    self.assertTrue(t.rowCount<22 and t.rowCount>0) # per default there are some but not all features selected
+    self._verifyResults(t)
+    
+    self.delayDisplay('Updating measurements for selecting all features and verifying results')
+    widget.qiWidget.selectAllButton.click()
+    widget.recalculateButton.click()
+    self.assertTrue(t.rowCount==22)    
+    values = {'Mean':(57.1303,'SUVbw'), \
+      'Peak':(84.8634,'SUVbw'),\
+      'Volume':(51.6897,'ml'),
+      'SAM':(2275.96,'SUVbw*ml'),
+      'Q1 Distribution':(29.3321,'%'),
+      'TLG':(2953.05,'SUVbw*ml')}
+    self._verifyResults(t, values)
+    
+    self.delayDisplay('Updating segmentation and verifying results')
+    widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
+    thresholdOptions = widget.editorWidget.toolsBox.currentOption
+    thresholdOptions.threshold.minimumValue = 25
+    thresholdOptions.threshold.maximumValue = 10000
+    thresholdOptions.onApply()
+    self._verifyResults(t, {'Mean':(53.8255,'SUVbw')})
+    
+    self.delayDisplay('Creating segmentation with new label')
+    colorSpin = widget.editorWidget.toolsColor.colorSpin    
+    colorSpin.value=2
+    self.assertFalse(t.visible)
+    widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
+    thresholdOptions = widget.editorWidget.toolsBox.currentOption
+    thresholdOptions.threshold.minimumValue = 50
+    thresholdOptions.threshold.maximumValue = 10000
+    thresholdOptions.onApply()
+    self._verifyResults(t, {'Mean':(68.0497,'SUVbw')})
+    widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
+    thresholdOptions = widget.editorWidget.toolsBox.currentOption
+    thresholdOptions.threshold.minimumValue = 60
+    thresholdOptions.threshold.maximumValue = 10000
+    thresholdOptions.onApply()
+    self._verifyResults(t, {'Mean':(72.8926,'SUVbw')})
+    
+    self.delayDisplay('Testing undo/redo')
+    widget.editorWidget.toolsBox.buttons['PreviousCheckPoint'].click()
+    self._verifyResults(t, {'Mean':(68.0497,'SUVbw')})
+    widget.editorWidget.toolsBox.buttons['NextCheckPoint'].click()
+    self._verifyResults(t, {'Mean':(72.8926,'SUVbw')})
+    
     self.delayDisplay('Test passed!')
+    
+  def _verifyResults(self, table, referenceMeasurements={}):
+    self.assertTrue(table.columnCount==3)
+    self.assertTrue(table.horizontalHeaderItem(0).text()=='Index')
+    self.assertTrue(table.horizontalHeaderItem(1).text()=='Value')
+    self.assertTrue(table.horizontalHeaderItem(2).text()=='Units')
+    matchedMeasurements = set()
+    for i in range(table.rowCount):
+      index = table.item(i,0).text()
+      value = table.item(i,1).text()
+      units = table.item(i,2).text()
+      if index in referenceMeasurements:
+        matchedMeasurements.add(index)
+        self.assertTrue(abs(float(value)-referenceMeasurements[index][0])<0.01) # account for potential rounding differences
+        self.assertTrue(units==referenceMeasurements[index][1])
+    self.assertTrue(len(matchedMeasurements)==len(referenceMeasurements))
+    
+    
+     
+     
+     
