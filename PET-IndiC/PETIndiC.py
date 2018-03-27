@@ -687,8 +687,9 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
     """ Open temporary DICOM database
     """
     slicer.mrmlScene.Clear(0)
-    self.tempDicomDatabase = os.path.join(slicer.app.temporaryPath,'PETTest')
-    self.originalDicomDatabase = DICOMUtils.openTemporaryDatabase(self.tempDicomDatabase)
+    self.delayMs = 700
+    self.tempDataDir = os.path.join(slicer.app.temporaryPath,'PETTest')
+    self.tempDicomDatabaseDir = os.path.join(slicer.app.temporaryPath,'PETTestDicom')
 
   def doCleanups(self):
     """ cleanup temporary data in case an exception occurs
@@ -698,57 +699,51 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
   def tearDown(self):
     """ Close temporary DICOM database and remove temporary data
     """ 
-    import shutil
-    if self.originalDicomDatabase:
-      DICOMUtils.closeTemporaryDatabase(self.originalDicomDatabase, True)
-      shutil.rmtree(self.tempDicomDatabase) # closeTemporaryDatabase cleanup doesn't work. We need to do it manually
-      self.originalDicomDatabase = None
+    try:
+      import shutil
+      if os.path.exists(self.tempDataDir):
+        shutil.rmtree(self.tempDataDir)
+    except Exception, e:
+      import traceback
+      traceback.print_exc()
+      self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
   
   def loadTestData(self):
-    """ load SUV normalized PET scan from DICOM file
-    """ 
-    import urllib
-    UID = '1.3.6.1.4.1.14519.5.2.1.2744.7002.886851941687931416391879144903'  
-    quantity = slicer.vtkCodedEntry()
-    quantity.SetFromString('CodeValue:126400|CodingSchemeDesignator:DCM|CodeMeaning:Standardized Uptake Value')
-    units = slicer.vtkCodedEntry()
-    units.SetFromString('CodeValue:{SUVbw}g/ml|CodingSchemeDesignator:UCUM|CodeMeaning:Standardized Uptake Value body weight')      
-    url = 'http://slicer.kitware.com/midas3/download/item/257234/QIN-HEADNECK-01-0139-PET.zip'
-    zipFile = 'QIN-HEADNECK-01-0139-PET.zip'
-    suvNormalizationFactor = 0.00040166400000000007
-    destinationDirectory = self.tempDicomDatabase
-    filePath = os.path.join(destinationDirectory, zipFile)
-    # download dataset if necessary
-    if not len(slicer.dicomDatabase.filesForSeries(UID)):
-      filePath = os.path.join(destinationDirectory, zipFile)
-      if not os.path.exists(os.path.dirname(filePath)):
-        os.makedirs(os.path.dirname(filePath))
-      logging.debug('Saving download %s to %s ' % (url, filePath))
-      if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
-        slicer.util.delayDisplay('Requesting download of %s...\n' % url, 1000)
-        urllib.urlretrieve(url, filePath)
-      if os.path.exists(filePath) and os.path.splitext(filePath)[1]=='.zip':
-        success = slicer.app.applicationLogic().Unzip(filePath, destinationDirectory)
-        if not success:
-          logging.error("Archive %s was NOT unzipped successfully." %  filePath)
-      indexer = ctk.ctkDICOMIndexer()
-      indexer.addDirectory(slicer.dicomDatabase, destinationDirectory, None)
-      indexer.waitForImportFinished()
-      
-    # load dataset and as SUVbw; disable all other DICOM plugings to assure we get the "right" type
+    self.patienName = 'QIN-HEADNECK-01-0139'
+    #download data and add to dicom database
+    zipFileUrl = 'http://slicer.kitware.com/midas3/download/item/257234/QIN-HEADNECK-01-0139-PET.zip'
+    zipFilePath = self.tempDataDir+'/dicom.zip'
+    zipFileData = self.tempDataDir+'/dicom'
+    expectedNumOfFiles = 545
+    if not os.access(self.tempDataDir, os.F_OK):
+      os.mkdir(self.tempDataDir)
+    if not os.access(zipFileData, os.F_OK):
+      os.mkdir(zipFileData)
+
     dicomWidget = slicer.modules.dicom.widgetRepresentation().self()
     dicomPluginCheckbox =  dicomWidget.detailsPopup.pluginSelector.checkBoxByPlugin
     dicomPluginStates = {(key,value.checked) for key,value in dicomPluginCheckbox.iteritems()}
     for cb in dicomPluginCheckbox.itervalues(): cb.checked=False
     dicomPluginCheckbox['DICOMScalarVolumePlugin'].checked = True
-    DICOMUtils.loadSeriesByUID([UID])    
+
+    # Download, unzip, import, and load data. Verify loaded nodes.
+    loadedNodes = {'vtkMRMLScalarVolumeNode':1}
+    with DICOMUtils.LoadDICOMFilesToDatabase(zipFileUrl, zipFilePath, zipFileData, expectedNumOfFiles, {}, loadedNodes) as success:
+      self.assertTrue(success)
+      print ('loading returned true')
+
+    self.assertEqual( len( slicer.util.getNodes('vtkMRMLSubjectHierarchyNode*') ), 1 )
+    imageNode = slicer.mrmlScene.GetFirstNodeByClass('vtkMRMLScalarVolumeNode')
+
     for key,value in dicomPluginStates:
       dicomPluginCheckbox[key].checked=value
-    imageNode = slicer.mrmlScene.GetFirstNodeByClass('vtkMRMLScalarVolumeNode')
-    if not imageNode:
-      logging.error("Volume not loaded\n.")
-      
+
     # apply the SUVbw conversion factor and set units and quantity
+    suvNormalizationFactor = 0.00040166400000000007
+    quantity = slicer.vtkCodedEntry()
+    quantity.SetFromString('CodeValue:126400|CodingSchemeDesignator:DCM|CodeMeaning:Standardized Uptake Value')
+    units = slicer.vtkCodedEntry()
+    units.SetFromString('CodeValue:{SUVbw}g/ml|CodingSchemeDesignator:UCUM|CodeMeaning:Standardized Uptake Value body weight')
     multiplier = vtk.vtkImageMathematics()
     multiplier.SetOperationToMultiplyByK()
     multiplier.SetConstantK(suvNormalizationFactor)
@@ -758,79 +753,90 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
     imageNode.GetVolumeDisplayNode().SetWindowLevel(6,3)
     imageNode.GetVolumeDisplayNode().SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
     imageNode.SetVoxelValueQuantity(quantity)
-    imageNode.SetVoxelValueUnits(units)    
-    
+    imageNode.SetVoxelValueUnits(units)
+
     return imageNode
     
   def test_PETIndiC(self):
     """ test standard segmentation and report generation
     """ 
-    self.delayDisplay('Loading PET DICOM dataset (including download if necessary)')
-    petNode = self.loadTestData()
-    #petNode = slicer.mrmlScene.GetFirstNodeByClass('vtkMRMLScalarVolumeNode')
-    m = slicer.util.mainWindow()
-    m.moduleSelector().selectModule('PETIndiC') # not PET-IndiC here
-    widget = slicer.modules.PETIndiCWidget
-    widget.inputSelector.setCurrentNode(petNode)
-    labelNode = widget.labelSelector.currentNode()
-    self.assertIsNotNone(labelNode)
+    try:
+      self.assertIsNotNone( slicer.modules.petindic )
+      self.assertIsNotNone( slicer.modules.quantitativeindicescli )
+      with DICOMUtils.TemporaryDICOMDatabase(self.tempDicomDatabaseDir) as db:
+        self.assertTrue(db.isOpen)
+        self.assertEqual(slicer.dicomDatabase, db)
+     
+        self.delayDisplay('Loading PET DICOM dataset (including download if necessary)')
+        petNode = self.loadTestData()
+        m = slicer.util.mainWindow()
+        m.moduleSelector().selectModule('PETIndiC') # not PET-IndiC here
+        widget = slicer.modules.PETIndiCWidget
+        widget.inputSelector.setCurrentNode(petNode)
+        labelNode = widget.labelSelector.currentNode()
+        self.assertIsNotNone(labelNode)
     
-    self.delayDisplay('Producing segmentation')
-    widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
-    thresholdOptions = widget.editorWidget.toolsBox.currentOption
-    thresholdOptions.threshold.minimumValue = 30
-    thresholdOptions.threshold.maximumValue = 10000
-    thresholdOptions.onApply()
+        self.delayDisplay('Producing segmentation')
+        widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
+        thresholdOptions = widget.editorWidget.toolsBox.currentOption
+        thresholdOptions.threshold.minimumValue = 30
+        thresholdOptions.threshold.maximumValue = 10000
+        thresholdOptions.onApply()
     
-    self.delayDisplay('Checking initial measurement results')
-    t = widget.resultsTable
-    self.assertTrue(t.rowCount<22 and t.rowCount>0) # per default there are some but not all features selected
-    self._verifyResults(t)
+        self.delayDisplay('Checking initial measurement results')
+        t = widget.resultsTable
+        self.assertTrue(t.rowCount<22 and t.rowCount>0) # per default there are some but not all features selected
+        self._verifyResults(t)
     
-    self.delayDisplay('Updating measurements for selecting all features and verifying results')
-    widget.qiWidget.selectAllButton.click()
-    widget.recalculateButton.click()
-    self.assertTrue(t.rowCount==22)    
-    values = {'Mean':(57.1303,'SUVbw'), \
-      'Peak':(84.8634,'SUVbw'),\
-      'Volume':(51.6897,'ml'),
-      'SAM':(2275.96,'SUVbw*ml'),
-      'Q1 Distribution':(29.3321,'%'),
-      'TLG':(2953.05,'SUVbw*ml')}
-    self._verifyResults(t, values)
+        self.delayDisplay('Updating measurements for selecting all features and verifying results')
+        widget.qiWidget.selectAllButton.click()
+        widget.recalculateButton.click()
+        self.assertTrue(t.rowCount==22)    
+        values = {'Mean':(57.1303,'SUVbw'), \
+          'Peak':(84.8634,'SUVbw'),\
+          'Volume':(51.6897,'ml'),
+          'SAM':(2275.96,'SUVbw*ml'),
+          'Q1 Distribution':(29.3321,'%'),
+          'TLG':(2953.05,'SUVbw*ml')}
+        self._verifyResults(t, values)
     
-    self.delayDisplay('Updating segmentation and verifying results')
-    widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
-    thresholdOptions = widget.editorWidget.toolsBox.currentOption
-    thresholdOptions.threshold.minimumValue = 25
-    thresholdOptions.threshold.maximumValue = 10000
-    thresholdOptions.onApply()
-    self._verifyResults(t, {'Mean':(53.8255,'SUVbw')})
+        self.delayDisplay('Updating segmentation and verifying results')
+        widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
+        thresholdOptions = widget.editorWidget.toolsBox.currentOption
+        thresholdOptions.threshold.minimumValue = 25
+        thresholdOptions.threshold.maximumValue = 10000
+        thresholdOptions.onApply()
+        self._verifyResults(t, {'Mean':(53.8255,'SUVbw')})
     
-    self.delayDisplay('Creating segmentation with new label')
-    colorSpin = widget.editorWidget.toolsColor.colorSpin    
-    colorSpin.value=2
-    self.assertFalse(t.visible)
-    widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
-    thresholdOptions = widget.editorWidget.toolsBox.currentOption
-    thresholdOptions.threshold.minimumValue = 50
-    thresholdOptions.threshold.maximumValue = 10000
-    thresholdOptions.onApply()
-    self._verifyResults(t, {'Mean':(68.0497,'SUVbw')})
-    widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
-    thresholdOptions = widget.editorWidget.toolsBox.currentOption
-    thresholdOptions.threshold.minimumValue = 60
-    thresholdOptions.threshold.maximumValue = 10000
-    thresholdOptions.onApply()
-    self._verifyResults(t, {'Mean':(72.8926,'SUVbw')})
+        self.delayDisplay('Creating segmentation with new label')
+        colorSpin = widget.editorWidget.toolsColor.colorSpin    
+        colorSpin.value=2
+        self.assertFalse(t.visible)
+        widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
+        thresholdOptions = widget.editorWidget.toolsBox.currentOption
+        thresholdOptions.threshold.minimumValue = 50
+        thresholdOptions.threshold.maximumValue = 10000
+        thresholdOptions.onApply()
+        self._verifyResults(t, {'Mean':(68.0497,'SUVbw')})
+        widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
+        thresholdOptions = widget.editorWidget.toolsBox.currentOption
+        thresholdOptions.threshold.minimumValue = 60
+        thresholdOptions.threshold.maximumValue = 10000
+        thresholdOptions.onApply()
+        self._verifyResults(t, {'Mean':(72.8926,'SUVbw')})
     
-    self.delayDisplay('Testing undo/redo')
-    widget.editorWidget.toolsBox.buttons['PreviousCheckPoint'].click()
-    self._verifyResults(t, {'Mean':(68.0497,'SUVbw')})
-    widget.editorWidget.toolsBox.buttons['NextCheckPoint'].click()
-    self._verifyResults(t, {'Mean':(72.8926,'SUVbw')})
+        self.delayDisplay('Testing undo/redo')
+        widget.editorWidget.toolsBox.buttons['PreviousCheckPoint'].click()
+        self._verifyResults(t, {'Mean':(68.0497,'SUVbw')})
+        widget.editorWidget.toolsBox.buttons['NextCheckPoint'].click()
+        self._verifyResults(t, {'Mean':(72.8926,'SUVbw')})
     
-    self.delayDisplay('Test passed!')
+        self.delayDisplay('Test passed!')
+
+    except Exception, e:
+      import traceback
+      traceback.print_exc()
+      self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
     
   def _verifyResults(self, table, referenceMeasurements={}):
     self.assertTrue(table.columnCount==3)

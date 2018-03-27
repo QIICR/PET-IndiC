@@ -11,6 +11,11 @@
 #define isnan(x) _isnan(x)
 #endif
 
+// make isnan non-ambiguous for C++11
+#if __cplusplus >= 201103L
+#define isnan(x) std::isnan(x)
+#endif
+
 #include "itkQuantitativeIndicesComputationFilter.h"
 #include "itkPluginUtilities.h"
 

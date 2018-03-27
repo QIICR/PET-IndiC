@@ -75,8 +75,9 @@ class PETVolumeSegmentStatisticsPluginSelfTestTest(ScriptedLoadableModuleTest):
     """ Open temporary DICOM database
     """
     slicer.mrmlScene.Clear(0)
-    self.tempDicomDatabase = os.path.join(slicer.app.temporaryPath,'PETTest')
-    self.originalDicomDatabase = DICOMUtils.openTemporaryDatabase(self.tempDicomDatabase)
+    self.delayMs = 700
+    self.tempDataDir = os.path.join(slicer.app.temporaryPath,'PETTest')
+    self.tempDicomDatabaseDir = os.path.join(slicer.app.temporaryPath,'PETTestDicom')
 
   def doCleanups(self):
     """ cleanup temporary data in case an exception occurs
@@ -86,57 +87,51 @@ class PETVolumeSegmentStatisticsPluginSelfTestTest(ScriptedLoadableModuleTest):
   def tearDown(self):
     """ Close temporary DICOM database and remove temporary data
     """
-    import shutil
-    if self.originalDicomDatabase:
-      DICOMUtils.closeTemporaryDatabase(self.originalDicomDatabase, True)
-      shutil.rmtree(self.tempDicomDatabase) # closeTemporaryDatabase cleanup doesn't work. We need to do it manually
-      self.originalDicomDatabase = None
+    try:
+      import shutil
+      if os.path.exists(self.tempDataDir):
+        shutil.rmtree(self.tempDataDir)
+    except Exception, e:
+      import traceback
+      traceback.print_exc()
+      self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
 
   def loadTestData(self):
-    """ load SUV normalized PET scan from DICOM file
-    """
-    import urllib
-    UID = '1.3.6.1.4.1.14519.5.2.1.2744.7002.886851941687931416391879144903'
-    quantity = slicer.vtkCodedEntry()
-    quantity.SetFromString('CodeValue:126400|CodingSchemeDesignator:DCM|CodeMeaning:Standardized Uptake Value')
-    units = slicer.vtkCodedEntry()
-    units.SetFromString('CodeValue:{SUVbw}g/ml|CodingSchemeDesignator:UCUM|CodeMeaning:Standardized Uptake Value body weight')
-    url = 'http://slicer.kitware.com/midas3/download/item/257234/QIN-HEADNECK-01-0139-PET.zip'
-    zipFile = 'QIN-HEADNECK-01-0139-PET.zip'
-    suvNormalizationFactor = 0.00040166400000000007
-    destinationDirectory = self.tempDicomDatabase
-    filePath = os.path.join(destinationDirectory, zipFile)
-    # download dataset if necessary
-    if not len(slicer.dicomDatabase.filesForSeries(UID)):
-      filePath = os.path.join(destinationDirectory, zipFile)
-      if not os.path.exists(os.path.dirname(filePath)):
-        os.makedirs(os.path.dirname(filePath))
-      logging.debug('Saving download %s to %s ' % (url, filePath))
-      if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
-        slicer.util.delayDisplay('Requesting download of %s...\n' % url, 1000)
-        urllib.urlretrieve(url, filePath)
-      if os.path.exists(filePath) and os.path.splitext(filePath)[1]=='.zip':
-        success = slicer.app.applicationLogic().Unzip(filePath, destinationDirectory)
-        if not success:
-          logging.error("Archive %s was NOT unzipped successfully." %  filePath)
-      indexer = ctk.ctkDICOMIndexer()
-      indexer.addDirectory(slicer.dicomDatabase, destinationDirectory, None)
-      indexer.waitForImportFinished()
+    self.patienName = 'QIN-HEADNECK-01-0139'
+    #download data and add to dicom database
+    zipFileUrl = 'http://slicer.kitware.com/midas3/download/item/257234/QIN-HEADNECK-01-0139-PET.zip'
+    zipFilePath = self.tempDataDir+'/dicom.zip'
+    zipFileData = self.tempDataDir+'/dicom'
+    expectedNumOfFiles = 545
+    if not os.access(self.tempDataDir, os.F_OK):
+      os.mkdir(self.tempDataDir)
+    if not os.access(zipFileData, os.F_OK):
+      os.mkdir(zipFileData)
 
-    # load dataset and as SUVbw; disable all other DICOM plugings to assure we get the "right" type
     dicomWidget = slicer.modules.dicom.widgetRepresentation().self()
     dicomPluginCheckbox =  dicomWidget.detailsPopup.pluginSelector.checkBoxByPlugin
     dicomPluginStates = {(key,value.checked) for key,value in dicomPluginCheckbox.iteritems()}
     for cb in dicomPluginCheckbox.itervalues(): cb.checked=False
     dicomPluginCheckbox['DICOMScalarVolumePlugin'].checked = True
-    DICOMUtils.loadSeriesByUID([UID])
+
+    # Download, unzip, import, and load data. Verify loaded nodes.
+    loadedNodes = {'vtkMRMLScalarVolumeNode':1}
+    with DICOMUtils.LoadDICOMFilesToDatabase(zipFileUrl, zipFilePath, zipFileData, expectedNumOfFiles, {}, loadedNodes) as success:
+      self.assertTrue(success)
+      print ('loading returned true')
+
+    self.assertEqual( len( slicer.util.getNodes('vtkMRMLSubjectHierarchyNode*') ), 1 )
+    imageNode = slicer.mrmlScene.GetFirstNodeByClass('vtkMRMLScalarVolumeNode')
+
     for key,value in dicomPluginStates:
       dicomPluginCheckbox[key].checked=value
-    imageNode = slicer.mrmlScene.GetFirstNodeByClass('vtkMRMLScalarVolumeNode')
-    if not imageNode:
-      logging.error("Volume not loaded\n.")
 
     # apply the SUVbw conversion factor and set units and quantity
+    suvNormalizationFactor = 0.00040166400000000007
+    quantity = slicer.vtkCodedEntry()
+    quantity.SetFromString('CodeValue:126400|CodingSchemeDesignator:DCM|CodeMeaning:Standardized Uptake Value')
+    units = slicer.vtkCodedEntry()
+    units.SetFromString('CodeValue:{SUVbw}g/ml|CodingSchemeDesignator:UCUM|CodeMeaning:Standardized Uptake Value body weight')
     multiplier = vtk.vtkImageMathematics()
     multiplier.SetOperationToMultiplyByK()
     multiplier.SetConstantK(suvNormalizationFactor)
@@ -153,90 +148,101 @@ class PETVolumeSegmentStatisticsPluginSelfTestTest(ScriptedLoadableModuleTest):
   def test_Plugin(self):
     """ produce measurements using PETVolumeSegmentStaticsPlugin and verify results
     """
-    self.delayDisplay('Checking for PET statistics plugin and configuring')
-    segStatLogic = SegmentStatisticsLogic()
-    params = segStatLogic.getParameterNode()
-    parameterNames = params.GetParameterNamesAsCommaSeparatedList().split(',')
-    self.assertIn('PETVolumeSegmentStatisticsPlugin.enabled',parameterNames)
-    for p in parameterNames:
-      isPETParam = p.find('PETVolumeSegmentStatisticsPlugin.')==0
-      if p.find('.enabled')>0:
-        params.SetParameter(p,str(True if isPETParam  else False))
+    try:
+      self.assertIsNotNone( slicer.modules.quantitativeindicescli )
+      with DICOMUtils.TemporaryDICOMDatabase(self.tempDicomDatabaseDir) as db:
+        self.assertTrue(db.isOpen)
+        self.assertEqual(slicer.dicomDatabase, db)
+        
+        self.delayDisplay('Checking for PET statistics plugin and configuring')
+        segStatLogic = SegmentStatisticsLogic()
+        params = segStatLogic.getParameterNode()
+        parameterNames = params.GetParameterNamesAsCommaSeparatedList().split(',')
+        self.assertIn('PETVolumeSegmentStatisticsPlugin.enabled',parameterNames)
+        for p in parameterNames:
+          isPETParam = p.find('PETVolumeSegmentStatisticsPlugin.')==0
+          if p.find('.enabled')>0:
+            params.SetParameter(p,str(True if isPETParam  else False))
+    
+        self.delayDisplay('Loading PET DICOM dataset (including download if necessary)')
+        petNode = self.loadTestData()
+        #petNode = slicer.mrmlScene.GetFirstNodeByClass('vtkMRMLScalarVolumeNode')
+    
+        self.delayDisplay('Creating segmentations')
+        segmentationNode = slicer.vtkMRMLSegmentationNode()
+        slicer.mrmlScene.AddNode(segmentationNode)
+        segmentationNode.CreateDefaultDisplayNodes()
+        segmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(petNode)
+    
+        # Geometry for each segment is defined by: radius, posX, posY, posZ
+        segmentGeometries = [[30,-54,232,-980], [30,-41,232,-1065],  [50,112,232,-1264]]
+        for segmentGeometry in segmentGeometries:
+          sphereSource = vtk.vtkSphereSource()
+          sphereSource.SetRadius(segmentGeometry[0])
+          sphereSource.SetCenter(segmentGeometry[1], segmentGeometry[2], segmentGeometry[3])
+          sphereSource.Update()
+          segment = vtkSegmentationCore.vtkSegment()
+          uniqueSegmentID = segmentationNode.GetSegmentation().GenerateUniqueSegmentID("Test")
+          segmentationNode.AddSegmentFromClosedSurfaceRepresentation(sphereSource.GetOutput(), uniqueSegmentID)
 
-    self.delayDisplay('Loading PET DICOM dataset (including download if necessary)')
-    petNode = self.loadTestData()
-    #petNode = slicer.mrmlScene.GetFirstNodeByClass('vtkMRMLScalarVolumeNode')
+        self.delayDisplay('Calculating measurements')
+        segStatLogic.getParameterNode().SetParameter("Segmentation", segmentationNode.GetID())
+        segStatLogic.getParameterNode().SetParameter("ScalarVolume", petNode.GetID())
+        segStatLogic.computeStatistics()
+        stats = segStatLogic.getStatistics()
+        resultsTableNode = slicer.vtkMRMLTableNode()
+        slicer.mrmlScene.AddNode(resultsTableNode)
+        segStatLogic.exportToTable(resultsTableNode)
+        segStatLogic.showTable(resultsTableNode)
 
-    self.delayDisplay('Creating segmentations')
-    segmentationNode = slicer.vtkMRMLSegmentationNode()
-    slicer.mrmlScene.AddNode(segmentationNode)
-    segmentationNode.CreateDefaultDisplayNodes()
-    segmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(petNode)
+        self.delayDisplay('Veriyfing results')
 
-    # Geometry for each segment is defined by: radius, posX, posY, posZ
-    segmentGeometries = [[30,-54,232,-980], [30,-41,232,-1065],  [50,112,232,-1264]]
-    for segmentGeometry in segmentGeometries:
-      sphereSource = vtk.vtkSphereSource()
-      sphereSource.SetRadius(segmentGeometry[0])
-      sphereSource.SetCenter(segmentGeometry[1], segmentGeometry[2], segmentGeometry[3])
-      sphereSource.Update()
-      segment = vtkSegmentationCore.vtkSegment()
-      uniqueSegmentID = segmentationNode.GetSegmentation().GenerateUniqueSegmentID("Test")
-      segmentationNode.AddSegmentFromClosedSurfaceRepresentation(sphereSource.GetOutput(), uniqueSegmentID)
+        self.assertTrue(len(stats["MeasurementInfo"])>=22)
 
-    self.delayDisplay('Calculating measurements')
-    segStatLogic.getParameterNode().SetParameter("Segmentation", segmentationNode.GetID())
-    segStatLogic.getParameterNode().SetParameter("ScalarVolume", petNode.GetID())
-    segStatLogic.computeStatistics()
-    stats = segStatLogic.getStatistics()
-    resultsTableNode = slicer.vtkMRMLTableNode()
-    slicer.mrmlScene.AddNode(resultsTableNode)
-    segStatLogic.exportToTable(resultsTableNode)
-    segStatLogic.showTable(resultsTableNode)
+        # verify completenss of meta-information using measurement 'peak'
+        self.assertIn("PETVolumeSegmentStatisticsPlugin.peak", stats["MeasurementInfo"])
+        mInfo = stats["MeasurementInfo"]["PETVolumeSegmentStatisticsPlugin.peak"]
+        self.assertIn('name', mInfo)
+        self.assertTrue(mInfo['name']=='Peak')
+        self.assertIn('units', mInfo)
+        self.assertTrue(mInfo['units']=='Standardized Uptake Value body weight')
+        self.assertIn('DICOM.QuantityCode', mInfo)
+        self.assertTrue(mInfo['DICOM.QuantityCode']=='CodeValue:126400|CodingSchemeDesignator:DCM|CodeMeaning:Standardized Uptake Value')
+        self.assertIn('DICOM.UnitsCode', mInfo)
+        self.assertTrue(mInfo['DICOM.UnitsCode']=='CodeValue:{SUVbw}g/ml|CodingSchemeDesignator:UCUM|CodeMeaning:Standardized Uptake Value body weight')
+        self.assertIn('DICOM.DerivationCode', mInfo)
+        self.assertTrue(mInfo['DICOM.DerivationCode']=='CodeValue:126031|CodingSchemeDesignator:DCM|CodeMeaning:Peak Value Within ROI')
 
-    self.delayDisplay('Veriyfing results')
+        # verify measurements
+        self.assertTrue( abs(stats["Test","PETVolumeSegmentStatisticsPlugin.mean"]-3.67861)<0.0001 )
+        self.assertTrue( abs(stats["Test_1","PETVolumeSegmentStatisticsPlugin.std"]-3.81429)<0.0001 )
+        self.assertTrue( abs(stats["Test_2","PETVolumeSegmentStatisticsPlugin.min"]-0.91049)<0.0001 )
+        self.assertTrue( abs(stats["Test","PETVolumeSegmentStatisticsPlugin.max"]-19.5262)<0.0001 )
+        self.assertTrue( abs(stats["Test_1","PETVolumeSegmentStatisticsPlugin.rms"]-5.174)<0.0001 )
+        self.assertTrue( abs(stats["Test_2","PETVolumeSegmentStatisticsPlugin.volume"]-447.783)<0.0001 )
+        self.assertTrue( abs(stats["Test","PETVolumeSegmentStatisticsPlugin.1st_quartile"]-1.22039)<0.0001 )
+        self.assertTrue( abs(stats["Test_1","PETVolumeSegmentStatisticsPlugin.median"]-1.91971)<0.0001 )
+        self.assertTrue( abs(stats["Test_2","PETVolumeSegmentStatisticsPlugin.3rd_quartile"]-2.55595)<0.0001 )
+        self.assertTrue( abs(stats["Test","PETVolumeSegmentStatisticsPlugin.upper_adjacent"]-9.13507)<0.0001 )
+        self.assertTrue( abs(stats["Test_1","PETVolumeSegmentStatisticsPlugin.TLG"]-337.106)<0.0001 )
+        self.assertTrue( abs(stats["Test_2","PETVolumeSegmentStatisticsPlugin.glycosis_Q1"]-60.0397)<0.0001 )
+        self.assertTrue( abs(stats["Test","PETVolumeSegmentStatisticsPlugin.glycosis_Q2"]-82.9484)<0.0001 )
+        self.assertTrue( abs(stats["Test_1","PETVolumeSegmentStatisticsPlugin.glycosis_Q3"]-57.3372)<0.0001 )
+        self.assertTrue( abs(stats["Test_2","PETVolumeSegmentStatisticsPlugin.glycosis_Q4"]-10.4696)<0.0001 )
+        self.assertTrue( abs(stats["Test","PETVolumeSegmentStatisticsPlugin.Q1_distribution"]-78.7157)<0.0001 )
+        self.assertTrue( abs(stats["Test_1","PETVolumeSegmentStatisticsPlugin.Q2_distribution"]-9.45815)<0.0001 )
+        self.assertTrue( abs(stats["Test_2","PETVolumeSegmentStatisticsPlugin.Q3_distribution"]-20.9304)<0.0001 )
+        self.assertTrue( abs(stats["Test","PETVolumeSegmentStatisticsPlugin.Q4_distribution"]-3.48725)<0.0001 )
+        self.assertTrue( abs(stats["Test_1","PETVolumeSegmentStatisticsPlugin.SAM"]-204.575)<0.0001 )
+        self.assertTrue( abs(stats["Test_2","PETVolumeSegmentStatisticsPlugin.SAM_BG"]-2.12435)<0.0001 )
+        self.assertTrue( abs(stats["Test","PETVolumeSegmentStatisticsPlugin.peak"]-17.335)<0.0001 )
 
-    self.assertTrue(len(stats["MeasurementInfo"])>=22)
+        self.delayDisplay('Test passed!')
 
-    # verify completenss of meta-information using measurement 'peak'
-    self.assertIn("PETVolumeSegmentStatisticsPlugin.peak", stats["MeasurementInfo"])
-    mInfo = stats["MeasurementInfo"]["PETVolumeSegmentStatisticsPlugin.peak"]
-    self.assertIn('name', mInfo)
-    self.assertTrue(mInfo['name']=='Peak')
-    self.assertIn('units', mInfo)
-    self.assertTrue(mInfo['units']=='Standardized Uptake Value body weight')
-    self.assertIn('DICOM.QuantityCode', mInfo)
-    self.assertTrue(mInfo['DICOM.QuantityCode']=='CodeValue:126400|CodingSchemeDesignator:DCM|CodeMeaning:Standardized Uptake Value')
-    self.assertIn('DICOM.UnitsCode', mInfo)
-    self.assertTrue(mInfo['DICOM.UnitsCode']=='CodeValue:{SUVbw}g/ml|CodingSchemeDesignator:UCUM|CodeMeaning:Standardized Uptake Value body weight')
-    self.assertIn('DICOM.DerivationCode', mInfo)
-    self.assertTrue(mInfo['DICOM.DerivationCode']=='CodeValue:126031|CodingSchemeDesignator:DCM|CodeMeaning:Peak Value Within ROI')
-
-    # verify measurements
-    self.assertTrue( abs(stats["Test","PETVolumeSegmentStatisticsPlugin.mean"]-3.67861)<0.0001 )
-    self.assertTrue( abs(stats["Test_1","PETVolumeSegmentStatisticsPlugin.std"]-3.81429)<0.0001 )
-    self.assertTrue( abs(stats["Test_2","PETVolumeSegmentStatisticsPlugin.min"]-0.91049)<0.0001 )
-    self.assertTrue( abs(stats["Test","PETVolumeSegmentStatisticsPlugin.max"]-19.5262)<0.0001 )
-    self.assertTrue( abs(stats["Test_1","PETVolumeSegmentStatisticsPlugin.rms"]-5.174)<0.0001 )
-    self.assertTrue( abs(stats["Test_2","PETVolumeSegmentStatisticsPlugin.volume"]-447.783)<0.0001 )
-    self.assertTrue( abs(stats["Test","PETVolumeSegmentStatisticsPlugin.1st_quartile"]-1.22039)<0.0001 )
-    self.assertTrue( abs(stats["Test_1","PETVolumeSegmentStatisticsPlugin.median"]-1.91971)<0.0001 )
-    self.assertTrue( abs(stats["Test_2","PETVolumeSegmentStatisticsPlugin.3rd_quartile"]-2.55595)<0.0001 )
-    self.assertTrue( abs(stats["Test","PETVolumeSegmentStatisticsPlugin.upper_adjacent"]-9.13507)<0.0001 )
-    self.assertTrue( abs(stats["Test_1","PETVolumeSegmentStatisticsPlugin.TLG"]-337.106)<0.0001 )
-    self.assertTrue( abs(stats["Test_2","PETVolumeSegmentStatisticsPlugin.glycosis_Q1"]-60.0397)<0.0001 )
-    self.assertTrue( abs(stats["Test","PETVolumeSegmentStatisticsPlugin.glycosis_Q2"]-82.9484)<0.0001 )
-    self.assertTrue( abs(stats["Test_1","PETVolumeSegmentStatisticsPlugin.glycosis_Q3"]-57.3372)<0.0001 )
-    self.assertTrue( abs(stats["Test_2","PETVolumeSegmentStatisticsPlugin.glycosis_Q4"]-10.4696)<0.0001 )
-    self.assertTrue( abs(stats["Test","PETVolumeSegmentStatisticsPlugin.Q1_distribution"]-78.7157)<0.0001 )
-    self.assertTrue( abs(stats["Test_1","PETVolumeSegmentStatisticsPlugin.Q2_distribution"]-9.45815)<0.0001 )
-    self.assertTrue( abs(stats["Test_2","PETVolumeSegmentStatisticsPlugin.Q3_distribution"]-20.9304)<0.0001 )
-    self.assertTrue( abs(stats["Test","PETVolumeSegmentStatisticsPlugin.Q4_distribution"]-3.48725)<0.0001 )
-    self.assertTrue( abs(stats["Test_1","PETVolumeSegmentStatisticsPlugin.SAM"]-204.575)<0.0001 )
-    self.assertTrue( abs(stats["Test_2","PETVolumeSegmentStatisticsPlugin.SAM_BG"]-2.12435)<0.0001 )
-    self.assertTrue( abs(stats["Test","PETVolumeSegmentStatisticsPlugin.peak"]-17.335)<0.0001 )
-
-    self.delayDisplay('Test passed!')
+    except Exception, e:
+      import traceback
+      traceback.print_exc()
+      self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
 
   def _verifyResults(self, table, referenceMeasurements={}):
     self.assertTrue(table.columnCount==3)

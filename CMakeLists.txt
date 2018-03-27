@@ -16,6 +16,19 @@ set(EXTENSION_SCREENSHOTURLS "http://www.slicer.org/slicerWiki/images/3/32/PET-I
 find_package(Slicer REQUIRED)
 include(${Slicer_USE_FILE})
 
+if(CMAKE_CONFIGURATION_TYPES)
+  set(DEPENDENCIES_ADDITIONAL_MODULE_PATHS "")
+  foreach(config ${CMAKE_CONFIGURATION_TYPES})
+    list(APPEND DEPENDENCIES_ADDITIONAL_MODULE_PATHS "${CMAKE_BINARY_DIR}/${Slicer_CLIMODULES_LIB_DIR}/${config}")
+    list(APPEND DEPENDENCIES_ADDITIONAL_MODULE_PATHS "${CMAKE_BINARY_DIR}/${Slicer_QTSCRIPTEDMODULES_LIB_DIR}/${config}")
+  endforeach()
+else()
+  set(DEPENDENCIES_ADDITIONAL_MODULE_PATHS
+    ${CMAKE_BINARY_DIR}/${Slicer_CLIMODULES_LIB_DIR}
+    ${CMAKE_BINARY_DIR}/${Slicer_QTSCRIPTEDMODULES_LIB_DIR}
+    )
+endif()
+
 #-----------------------------------------------------------------------------
 # Extension modules
 add_subdirectory(PET-IndiC)
