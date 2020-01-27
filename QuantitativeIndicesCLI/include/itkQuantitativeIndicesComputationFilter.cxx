@@ -68,7 +68,7 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
 ::GetInputImage() const
 {
   if ( this->GetNumberOfInputs() < 1 )
-  { return NULL;  }
+  { return nullptr;  }
   else
   {
     return ImageConstPointer(static_cast< const ImageType* >( this->ProcessObject::GetInput(0) ));
@@ -104,7 +104,7 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
 ::GetInputLabelImage() const
 {
   if ( this->GetNumberOfInputs() < 2 )
-  { return NULL;  }
+  { return nullptr;  }
   else
   {
     return LabelImageConstPointer(static_cast< const LabelImageType* >( this->ProcessObject::GetInput(1) ));
@@ -466,6 +466,9 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
   //Set the class variables to the values we've determined.
   m_SAMValue = d_SAM;
   m_SAMBackground = d_SAMBackground;
+  
+  //std::cout << inputLabel << std::endl;
+  //std::cout << "dilatedRegionValues.size()="<<dilatedRegionValues.size() << std::endl;
 
 }
 
