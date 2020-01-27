@@ -23,34 +23,13 @@ class PETVolumeSegmentStatisticsPlugin(SegmentStatisticsPluginBase):
         'peak':'Peak'}
   
   def createLabelNodeFromSegment(self, segmentationNode, segmentID, grayscaleNode):
-    import vtkSegmentationCorePython as vtkSegmentationCore
-    # Get geometry of grayscale volume node as oriented image data
-    referenceGeometry_Reference = vtkSegmentationCore.vtkOrientedImageData() # reference geometry in reference node coordinate system
-    referenceGeometry_Reference.SetExtent(grayscaleNode.GetImageData().GetExtent())
-    ijkToRasMatrix = vtk.vtkMatrix4x4()
-    grayscaleNode.GetIJKToRASMatrix(ijkToRasMatrix)
-    referenceGeometry_Reference.SetGeometryFromImageToWorldMatrix(ijkToRasMatrix)
-
-    # Get transform between grayscale volume and segmentation
-    segmentationToReferenceGeometryTransform = vtk.vtkGeneralTransform()
-    slicer.vtkMRMLTransformNode.GetTransformBetweenNodes(segmentationNode.GetParentTransformNode(),
-      grayscaleNode.GetParentTransformNode(), segmentationToReferenceGeometryTransform)
-
-    segment = segmentationNode.GetSegmentation().GetSegment(segmentID)
-    segmentLabelmap = segment.GetRepresentation(vtkSegmentationCore.vtkSegmentationConverter.GetSegmentationBinaryLabelmapRepresentationName())
-
-    segmentLabelmap_Reference = vtkSegmentationCore.vtkOrientedImageData()
-    vtkSegmentationCore.vtkOrientedImageDataResample.ResampleOrientedImageToReferenceOrientedImage(
-    segmentLabelmap, referenceGeometry_Reference, segmentLabelmap_Reference,
-    False, # nearest neighbor interpolation
-    False, # no padding
-    segmentationToReferenceGeometryTransform)
-    
+    import vtkSegmentationCorePython as vtkSegmentationCore    
     # see https://github.com/QIICR/QuantitativeReporting/blob/master/QuantitativeReporting.py#L847
     labelNode = slicer.vtkMRMLLabelMapVolumeNode()
     
     segmentationsLogic = slicer.modules.segmentations.logic()
-    labelMap = segmentationNode.GetBinaryLabelmapRepresentation(segmentID)
+    labelMap = slicer.vtkOrientedImageData()
+    segmentationNode.GetBinaryLabelmapRepresentation(segmentID, labelMap)
     if not segmentationsLogic.CreateLabelmapVolumeFromOrientedImageData(labelMap, labelNode):
       return None
     labelNode.SetName("{}_label".format(segmentID))
@@ -92,7 +71,7 @@ class PETVolumeSegmentStatisticsPlugin(SegmentStatisticsPluginBase):
       cliNode = None
       cliNode = slicer.cli.run(qiModule,cliNode,parameters,wait_for_completion=True)
     
-      for i in xrange(0,cliNode.GetNumberOfParametersInGroup(3)):
+      for i in range(0,cliNode.GetNumberOfParametersInGroup(3)):
         newResult = cliNode.GetParameterDefault(3,i)
         if (newResult != '--'):
           feature = cliNode.GetParameterName(3,i)

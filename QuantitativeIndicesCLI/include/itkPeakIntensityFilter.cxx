@@ -112,7 +112,7 @@ PeakIntensityFilter<TImage, TLabelImage>
 ::GetInputImage() const
 {
   if ( this->GetNumberOfInputs() < 1 )
-  { return NULL;  }
+  { return nullptr;  }
   else
   {
     return ImageConstPointer(static_cast< const ImageType* >( this->ProcessObject::GetInput(0) ));
@@ -148,7 +148,7 @@ PeakIntensityFilter<TImage, TLabelImage>
 ::GetInputLabelImage() const
 {
   if ( this->GetNumberOfInputs() < 2 )
-  { return NULL;  }
+  { return nullptr;  }
   else
   {
     return LabelImageConstPointer(static_cast< const LabelImageType* >( this->ProcessObject::GetInput(1) ));
@@ -212,8 +212,8 @@ PeakIntensityFilter<TImage, TLabelImage>
   if(!labelFound)
   {
     m_PeakValue = std::numeric_limits<double>::quiet_NaN();
-    m_CroppedInputImage = NULL;
-    m_CroppedLabelImage = NULL;
+    m_CroppedInputImage = nullptr;
+    m_CroppedLabelImage = nullptr;
     return;
   }
   
@@ -229,9 +229,9 @@ PeakIntensityFilter<TImage, TLabelImage>
   {
     pad[i] = ceil(1.5*m_SphereRadius[i]/voxelSize[i]);
     minIndex[i] = lowerIndex[i]-pad[i];
-    if(minIndex[i]<imageIndex[i]) minIndex[i]=imageIndex[i];
+    if(minIndex[i]<(signed long)imageIndex[i]) minIndex[i]=imageIndex[i];
     maxIndex[i] = upperIndex[i]+pad[i];
-    if(maxIndex[i]>imageSize[i]-1) maxIndex[i]=imageSize[i]-1;
+    if(maxIndex[i]>(signed long)imageSize[i]-1) maxIndex[i]=imageSize[i]-1;
     size[i] = maxIndex[i]-minIndex[i]+1;
   }
   typename ImageType::RegionType region(minIndex, size);

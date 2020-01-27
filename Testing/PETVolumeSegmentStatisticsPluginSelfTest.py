@@ -1,6 +1,5 @@
 import os
 import unittest
-import dicom
 import vtk, qt, ctk, slicer, logging
 from DICOMLib import DICOMUtils
 from SegmentStatistics import SegmentStatisticsLogic
@@ -91,7 +90,7 @@ class PETVolumeSegmentStatisticsPluginSelfTestTest(ScriptedLoadableModuleTest):
       import shutil
       if os.path.exists(self.tempDataDir):
         shutil.rmtree(self.tempDataDir)
-    except Exception, e:
+    except Exception as e:
       import traceback
       traceback.print_exc()
       self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
@@ -107,24 +106,16 @@ class PETVolumeSegmentStatisticsPluginSelfTestTest(ScriptedLoadableModuleTest):
       os.mkdir(self.tempDataDir)
     if not os.access(zipFileData, os.F_OK):
       os.mkdir(zipFileData)
-
-    dicomWidget = slicer.modules.dicom.widgetRepresentation().self()
-    dicomPluginCheckbox =  dicomWidget.detailsPopup.pluginSelector.checkBoxByPlugin
-    dicomPluginStates = {(key,value.checked) for key,value in dicomPluginCheckbox.iteritems()}
-    for cb in dicomPluginCheckbox.itervalues(): cb.checked=False
-    dicomPluginCheckbox['DICOMScalarVolumePlugin'].checked = True
-
-    # Download, unzip, import, and load data. Verify loaded nodes.
-    loadedNodes = {'vtkMRMLScalarVolumeNode':1}
-    with DICOMUtils.LoadDICOMFilesToDatabase(zipFileUrl, zipFilePath, zipFileData, expectedNumOfFiles, {}, loadedNodes) as success:
-      self.assertTrue(success)
-      print ('loading returned true')
-
-    self.assertEqual( len( slicer.util.getNodes('vtkMRMLSubjectHierarchyNode*') ), 1 )
-    imageNode = slicer.mrmlScene.GetFirstNodeByClass('vtkMRMLScalarVolumeNode')
-
-    for key,value in dicomPluginStates:
-      dicomPluginCheckbox[key].checked=value
+      slicer.util.downloadAndExtractArchive( zipFileUrl, zipFilePath, zipFileData, expectedNumOfFiles)
+    DICOMUtils.importDicom(zipFileData)
+    
+    # load dataset
+    dicomFiles = slicer.util.getFilesInDirectory(zipFileData)
+    loadablesByPlugin, loadEnabled = DICOMUtils.getLoadablesFromFileLists([dicomFiles],['DICOMScalarVolumePlugin'])
+    loadedNodeIDs = DICOMUtils.loadLoadables(loadablesByPlugin)
+    imageNode = slicer.mrmlScene.GetNodeByID(loadedNodeIDs[0])
+    imageNode.SetSpacing(3.3940266832237, 3.3940266832237, 2.02490234375) # mimic spacing as produced by Slicer 4.10 for which the test was originally developed
+    imageNode.SetOrigin(285.367523193359375,494.58682250976556816,-1873.3819580078125) # mimic origin as produced by Slicer 4.10 for which the test was originally developed
 
     # apply the SUVbw conversion factor and set units and quantity
     suvNormalizationFactor = 0.00040166400000000007
@@ -175,7 +166,7 @@ class PETVolumeSegmentStatisticsPluginSelfTestTest(ScriptedLoadableModuleTest):
         segmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(petNode)
     
         # Geometry for each segment is defined by: radius, posX, posY, posZ
-        segmentGeometries = [[30,-54,232,-980], [30,-41,232,-1065],  [50,112,232,-1264]]
+        segmentGeometries = [[30,-54,232,-980], [30,-41,232,-1065], [50,112,232,-1264]]
         for segmentGeometry in segmentGeometries:
           sphereSource = vtk.vtkSphereSource()
           sphereSource.SetRadius(segmentGeometry[0])
@@ -233,13 +224,13 @@ class PETVolumeSegmentStatisticsPluginSelfTestTest(ScriptedLoadableModuleTest):
         self.assertTrue( abs(stats["Test_1","PETVolumeSegmentStatisticsPlugin.Q2_distribution"]-9.45815)<0.0001 )
         self.assertTrue( abs(stats["Test_2","PETVolumeSegmentStatisticsPlugin.Q3_distribution"]-20.9304)<0.0001 )
         self.assertTrue( abs(stats["Test","PETVolumeSegmentStatisticsPlugin.Q4_distribution"]-3.48725)<0.0001 )
-        self.assertTrue( abs(stats["Test_1","PETVolumeSegmentStatisticsPlugin.SAM"]-204.575)<0.0001 )
-        self.assertTrue( abs(stats["Test_2","PETVolumeSegmentStatisticsPlugin.SAM_BG"]-2.12435)<0.0001 )
+        self.assertTrue( abs(stats["Test_1","PETVolumeSegmentStatisticsPlugin.SAM"]-206.139)<0.0001 )
+        self.assertTrue( abs(stats["Test_2","PETVolumeSegmentStatisticsPlugin.SAM_BG"]-2.121)<0.0001 )
         self.assertTrue( abs(stats["Test","PETVolumeSegmentStatisticsPlugin.peak"]-17.335)<0.0001 )
 
         self.delayDisplay('Test passed!')
 
-    except Exception, e:
+    except Exception as e:
       import traceback
       traceback.print_exc()
       self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)

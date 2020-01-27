@@ -1,1 +1,1 @@
-from PETVolumeSegmentStatisticsPlugin import *
+from .PETVolumeSegmentStatisticsPlugin import *

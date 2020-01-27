@@ -2,6 +2,7 @@
 
 #include "itkImage.h"
 #include "itkImageFileReader.h"
+#include "itkConstantPadImageFilter.h"
 #include "itkResampleImageFilter.h"
 #include <itkImageRegionConstIterator.h>
 #include <iostream>
@@ -36,26 +37,28 @@ int main( int argc, char * argv[] )
 	//image reader
   typedef itk::ImageFileReader< ImageType >  ReaderType;
   typedef itk::ImageFileReader< LabelImageType > LabelReaderType;
-	ReaderType::Pointer ptImage = ReaderType::New();
+	ReaderType::Pointer ptImageReader = ReaderType::New();
 	//itk::PluginFilterWatcher watchReader(ptImage, "Read Scalar Volume", CLPProcessInformation);
 	//ptImage->ReleaseDataFlagOn();
-  LabelReaderType::Pointer labelImage = LabelReaderType::New();
+  LabelReaderType::Pointer labelImageReader = LabelReaderType::New();
   //itk::PluginFilterWatcher watchLabelReader(labelImage, "Read Label Image", CLPProcessInformation);
   //labelImage->ReleaseDataFlagOn();
 
-  ptImage->SetFileName( Grayscale_Image );
-  labelImage->SetFileName( Label_Image );
-  ptImage->Update();
-  labelImage->Update();
+  ptImageReader->SetFileName( Grayscale_Image );
+  labelImageReader->SetFileName( Label_Image );
+  ptImageReader->Update();
+  labelImageReader->Update();
+  ImageType::Pointer ptImage = ptImageReader->GetOutput();
+  LabelImageType::Pointer labelImage = labelImageReader->GetOutput();
   
   // check if image and label occupy about the same space
   bool sameSpace = true;
-  ImageType::SpacingType ptSpacing = ptImage->GetOutput()->GetSpacing();
-  ImageType::PointType ptOrigin = ptImage->GetOutput()->GetOrigin();
-  ImageType::SizeType ptSize = ptImage->GetOutput()->GetLargestPossibleRegion().GetSize();
-  LabelImageType::SpacingType labelSpacing = labelImage->GetOutput()->GetSpacing();
-  LabelImageType::PointType labelOrigin = labelImage->GetOutput()->GetOrigin();
-  LabelImageType::SizeType labelSize = labelImage->GetOutput()->GetLargestPossibleRegion().GetSize();
+  ImageType::SpacingType ptSpacing = ptImage->GetSpacing();
+  ImageType::PointType ptOrigin = ptImage->GetOrigin();
+  ImageType::SizeType ptSize = ptImage->GetLargestPossibleRegion().GetSize();
+  LabelImageType::SpacingType labelSpacing = labelImage->GetSpacing();
+  LabelImageType::PointType labelOrigin = labelImage->GetOrigin();
+  LabelImageType::SizeType labelSize = labelImage->GetLargestPossibleRegion().GetSize();
   for(unsigned int i=0; i<Dimension; ++i)
   {
     if(abs(ptSpacing[i]-labelSpacing[i]) > 1e-6) sameSpace = false;
@@ -63,17 +66,47 @@ int main( int argc, char * argv[] )
     if(ptSize[i] != labelSize[i]) sameSpace = false;
   }
   
-  //resample the image to the resolution of the label
+  //resample the image to the resolution of the labelmap after padding the labelmap
+  typedef itk::ConstantPadImageFilter<LabelImageType, LabelImageType> PadderType;
+  PadderType::Pointer padder = PadderType::New();
   typedef itk::ResampleImageFilter<ImageType, ImageType> ResamplerType;
   ResamplerType::Pointer resampler = ResamplerType::New();
   //itk::PluginFilterWatcher watchResampler(resampler, "Resample Image", CLPProcessInformation);
   if(!sameSpace)
   {
-    resampler->SetInput(ptImage->GetOutput());
+    ImageType::SizeType extend;
+    extend.Fill(2); // for SAM calculation we need a 2 voxel boundary around the object
+    padder->SetInput(labelImage);
+    padder->SetPadLowerBound(extend);
+    padder->SetPadUpperBound(extend);
+    padder->SetConstant(0);
+    padder->Update();
+    labelImage = padder->GetOutput();
+    //labelImage->DisconnectPipeline();
+    // reset non-zero index
+    LabelImageType::RegionType r = labelImage->GetLargestPossibleRegion();
+    LabelImageType::IndexType idx = r.GetIndex();
+    for( unsigned int i = 0; i < LabelImageType::ImageDimension; ++i )
+    {
+      if ( idx[i] != 0 )
+      {
+        // if any of the indcies are non-zero, then just fix it
+        typename LabelImageType::PointType o;
+        labelImage->TransformIndexToPhysicalPoint( idx, o );
+        labelImage->SetOrigin( o );
+        idx.Fill( 0 );
+        r.SetIndex(idx);
+        labelImage->SetRegions(r);
+        break;       
+      }
+    }
+      
+    resampler->SetInput(ptImage);
     resampler->UseReferenceImageOn();
-    resampler->SetReferenceImage(labelImage->GetOutput());
+    resampler->SetReferenceImage(labelImage);
     resampler->UpdateLargestPossibleRegion();
     resampler->Update();
+    ptImage = resampler->GetOutput();
   }
   typedef itk::QuantitativeIndicesComputationFilter<ImageType,LabelImageType> QIFilterType;
 
@@ -106,14 +139,8 @@ int main( int argc, char * argv[] )
 
     QIFilterType::Pointer qiCompute = QIFilterType::New();
     //itk::PluginFilterWatcher watchFilter(qiCompute, "Quantitative Indices Computation", CLPProcessInformation);
-    if(sameSpace)
-    {
-      qiCompute->SetInputImage(ptImage->GetOutput());
-    }
-    else{
-      qiCompute->SetInputImage(resampler->GetOutput());
-    }
-    qiCompute->SetInputLabelImage(labelImage->GetOutput());
+    qiCompute->SetInputImage(ptImage);
+    qiCompute->SetInputLabelImage(labelImage);
     qiCompute->SetCurrentLabel( (int)Label_Value );
     //qiCompute->Update();
 
@@ -332,7 +359,7 @@ int main( int argc, char * argv[] )
     
     // get the label values
     typedef itk::ImageRegionConstIterator<LabelImageType> IteratorType;
-    IteratorType it(labelImage->GetOutput(), labelImage->GetOutput()->GetLargestPossibleRegion());
+    IteratorType it(labelImage, labelImage->GetLargestPossibleRegion());
     it.GoToBegin();
     std::set<int> regionLabels;
 
@@ -386,16 +413,8 @@ int main( int argc, char * argv[] )
       
       QIFilterType::Pointer qiCompute = QIFilterType::New();
       //itk::PluginFilterWatcher watchFilter(qiCompute, "Quantitative Indices Computation", CLPProcessInformation);
-      //qiCompute->SetInputImage(ptImage->GetOutput());
-      if(sameSpace)
-      {
-        qiCompute->SetInputImage(ptImage->GetOutput());
-      }
-      else{
-        qiCompute->SetInputImage(resampler->GetOutput());
-      }
-
-      qiCompute->SetInputLabelImage(labelImage->GetOutput());
+      qiCompute->SetInputImage(ptImage);
+      qiCompute->SetInputLabelImage(labelImage);
       qiCompute->SetCurrentLabel( labelValue );
       qiCompute->Update();
       

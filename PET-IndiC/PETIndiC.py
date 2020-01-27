@@ -284,7 +284,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
         stataccum.Update()
         lo = int(stataccum.GetMin()[0])
         hi = int(stataccum.GetMax()[0])
-        for value in xrange(lo,hi):
+        for value in range(lo,hi):
           volumeNode.labels.append(value+1)
       self.labelSelector.setCurrentNode(labelNode)
       if self.resultsTable.columnCount != 3:
@@ -408,7 +408,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     newNode = vtkMRMLCommandLineModuleNode
     resultArray = []
     self.items = []
-    for i in xrange(0,newNode.GetNumberOfParametersInGroup(3)):
+    for i in range(0,newNode.GetNumberOfParametersInGroup(3)):
       newResult = newNode.GetParameterDefault(3,i)
       if (newResult != '--'):
         feature = newNode.GetParameterName(3,i)
@@ -416,7 +416,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
         resultArray.append([feature,newResult])
     numRows = len(resultArray)
     self.resultsTable.setRowCount(numRows)
-    for i in xrange(0,numRows):
+    for i in range(0,numRows):
       if not self.resultsTable.item(i,0):
         indexEntry = qt.QTableWidgetItem()
         indexEntry.setText(resultArray[i][0])
@@ -477,7 +477,7 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
     scalarVolumes = slicer.mrmlScene.GetNodesByClass('vtkMRMLScalarVolumeNode')
     scalarVolumes.UnRegister(slicer.mrmlScene)
     labelFound = False
-    for idx in xrange(0,scalarVolumes.GetNumberOfItems()): #TODO use while loop
+    for idx in range(0,scalarVolumes.GetNumberOfItems()): #TODO use while loop
       imageNode = scalarVolumes.GetItemAsObject(idx)
       if imageNode.GetName() == (imageName + '_label'):
         print('Found dedicated label ' + imageNode.GetName())
@@ -661,8 +661,8 @@ class CustomTableWidget(qt.QTableWidget):
     
   def getSelectedCells(self):
     cells = []
-    for row in xrange(0, self.rowCount):
-      for col in xrange(0, self.columnCount):
+    for row in range(0, self.rowCount):
+      for col in range(0, self.columnCount):
         cell = self.item(row,col)
         if cell.isSelected():
           cells.append([row,col])
@@ -703,7 +703,7 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
       import shutil
       if os.path.exists(self.tempDataDir):
         shutil.rmtree(self.tempDataDir)
-    except Exception, e:
+    except Exception as e:
       import traceback
       traceback.print_exc()
       self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
@@ -719,24 +719,16 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
       os.mkdir(self.tempDataDir)
     if not os.access(zipFileData, os.F_OK):
       os.mkdir(zipFileData)
-
-    dicomWidget = slicer.modules.dicom.widgetRepresentation().self()
-    dicomPluginCheckbox =  dicomWidget.detailsPopup.pluginSelector.checkBoxByPlugin
-    dicomPluginStates = {(key,value.checked) for key,value in dicomPluginCheckbox.iteritems()}
-    for cb in dicomPluginCheckbox.itervalues(): cb.checked=False
-    dicomPluginCheckbox['DICOMScalarVolumePlugin'].checked = True
-
-    # Download, unzip, import, and load data. Verify loaded nodes.
-    loadedNodes = {'vtkMRMLScalarVolumeNode':1}
-    with DICOMUtils.LoadDICOMFilesToDatabase(zipFileUrl, zipFilePath, zipFileData, expectedNumOfFiles, {}, loadedNodes) as success:
-      self.assertTrue(success)
-      print ('loading returned true')
-
-    self.assertEqual( len( slicer.util.getNodes('vtkMRMLSubjectHierarchyNode*') ), 1 )
-    imageNode = slicer.mrmlScene.GetFirstNodeByClass('vtkMRMLScalarVolumeNode')
-
-    for key,value in dicomPluginStates:
-      dicomPluginCheckbox[key].checked=value
+      slicer.util.downloadAndExtractArchive( zipFileUrl, zipFilePath, zipFileData, expectedNumOfFiles)
+    DICOMUtils.importDicom(zipFileData)
+    
+    # load dataset
+    dicomFiles = slicer.util.getFilesInDirectory(zipFileData)
+    loadablesByPlugin, loadEnabled = DICOMUtils.getLoadablesFromFileLists([dicomFiles],['DICOMScalarVolumePlugin'])
+    loadedNodeIDs = DICOMUtils.loadLoadables(loadablesByPlugin)
+    imageNode = slicer.mrmlScene.GetNodeByID(loadedNodeIDs[0])
+    imageNode.SetSpacing(3.3940266832237, 3.3940266832237, 2.02490234375) # mimic spacing as produced by Slicer 4.10 for which the test was originally developed
+    imageNode.SetOrigin(285.367523193359375,494.58682250976556816,-1873.3819580078125) # mimic origin as produced by Slicer 4.10 for which the test was originally developed
 
     # apply the SUVbw conversion factor and set units and quantity
     suvNormalizationFactor = 0.00040166400000000007
@@ -748,7 +740,7 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
     multiplier.SetOperationToMultiplyByK()
     multiplier.SetConstantK(suvNormalizationFactor)
     multiplier.SetInput1Data(imageNode.GetImageData())
-    multiplier.Update()
+    multiplier.Update()  
     imageNode.GetImageData().DeepCopy(multiplier.GetOutput())
     imageNode.GetVolumeDisplayNode().SetWindowLevel(6,3)
     imageNode.GetVolumeDisplayNode().SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
@@ -775,12 +767,14 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
         widget.inputSelector.setCurrentNode(petNode)
         labelNode = widget.labelSelector.currentNode()
         self.assertIsNotNone(labelNode)
+        
+        upperThreshold = 89.85#10000
     
         self.delayDisplay('Producing segmentation')
         widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
         thresholdOptions = widget.editorWidget.toolsBox.currentOption
         thresholdOptions.threshold.minimumValue = 30
-        thresholdOptions.threshold.maximumValue = 10000
+        thresholdOptions.threshold.maximumValue = upperThreshold
         thresholdOptions.onApply()
     
         self.delayDisplay('Checking initial measurement results')
@@ -804,7 +798,7 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
         widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
         thresholdOptions = widget.editorWidget.toolsBox.currentOption
         thresholdOptions.threshold.minimumValue = 25
-        thresholdOptions.threshold.maximumValue = 10000
+        thresholdOptions.threshold.maximumValue = upperThreshold
         thresholdOptions.onApply()
         self._verifyResults(t, {'Mean':(53.8255,'SUVbw')})
     
@@ -815,13 +809,13 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
         widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
         thresholdOptions = widget.editorWidget.toolsBox.currentOption
         thresholdOptions.threshold.minimumValue = 50
-        thresholdOptions.threshold.maximumValue = 10000
+        thresholdOptions.threshold.maximumValue = upperThreshold
         thresholdOptions.onApply()
         self._verifyResults(t, {'Mean':(68.0497,'SUVbw')})
         widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
         thresholdOptions = widget.editorWidget.toolsBox.currentOption
         thresholdOptions.threshold.minimumValue = 60
-        thresholdOptions.threshold.maximumValue = 10000
+        thresholdOptions.threshold.maximumValue = upperThreshold
         thresholdOptions.onApply()
         self._verifyResults(t, {'Mean':(72.8926,'SUVbw')})
     
@@ -833,7 +827,7 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
     
         self.delayDisplay('Test passed!')
 
-    except Exception, e:
+    except Exception as e:
       import traceback
       traceback.print_exc()
       self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
