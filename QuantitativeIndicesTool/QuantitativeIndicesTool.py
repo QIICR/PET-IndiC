@@ -34,15 +34,15 @@ class QuantitativeIndicesTool(ScriptedLoadableModule):
     # Add this test to the SelfTest module's list for discovery when the module
     # is created.  Since this module may be discovered before SelfTests itself,
     # create the list if it doesn't already exist.
-    try:
-      slicer.selfTests
-    except AttributeError:
-      slicer.selfTests = {}
-    slicer.selfTests['QuantitativeIndicesTool'] = self.runTest
+    #try:
+    #  slicer.selfTests
+    #except AttributeError:
+    #  slicer.selfTests = {}
+    #slicer.selfTests['QuantitativeIndicesTool'] = self.runTest
 
-  def runTest(self):
-    tester = QuantitativeIndicesToolTest()
-    tester.runTest()
+  #def runTest(self):
+  #  tester = QuantitativeIndicesToolTest()
+  #  tester.runTest()
 
 #
 # qQuantitativeIndicesToolWidget
@@ -62,36 +62,10 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
       self.parent.show()"""
 
   def setup(self):
+    """Instantiate and connect widgets ...
+    """
     ScriptedLoadableModuleWidget.setup(self)
     self.logic = QuantitativeIndicesToolLogic()
-    """# Instantiate and connect widgets ...
-
-    #
-    # Reload and Test area
-    #
-    reloadCollapsibleButton = ctk.ctkCollapsibleButton()
-    reloadCollapsibleButton.text = "Reload && Test"
-    self.layout.addWidget(reloadCollapsibleButton)
-    reloadFormLayout = qt.QFormLayout(reloadCollapsibleButton)
-
-
-    # reload button
-    # (use this during development, but remove it when delivering
-    #  your module to users)
-    self.reloadButton = qt.QPushButton("Reload")
-    self.reloadButton.toolTip = "Reload this module."
-    self.reloadButton.name = "QuantitativeIndicesTool Reload"
-    reloadFormLayout.addWidget(self.reloadButton)
-    self.reloadButton.connect('clicked()', self.onReload)
-
-    # reload and test button
-    # (use this during development, but remove it when delivering
-    #  your module to users)
-    self.reloadAndTestButton = qt.QPushButton("Reload and Test")
-    self.reloadAndTestButton.toolTip = "Reload this module and then run the self tests."
-    reloadFormLayout.addWidget(self.reloadAndTestButton)
-    self.reloadAndTestButton.connect('clicked()', self.onReloadAndTest)
-    self.reloadAndTestButton.setEnabled(False)"""
 
     #
     # Parameters Area
@@ -427,7 +401,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
       self.parameterSetButton.setText('Generating...')
       self.parameterSetButton.repaint()
       slicer.app.processEvents()
-      for i in xrange(0,self.totalLabels):
+      for i in range(self.totalLabels):
         parameters = {}
         parameters['Grayscale_Image'] = self.grayscaleNode.GetID()
         parameters['Label_Image'] = self.labelNode.GetID()
@@ -448,7 +422,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     generated.  Re-enable the volume selectors and parameter set button.
     """
     if self.confirmDelete('Changing the volumes will delete any previous calculations from the scene.  Proceed?'):
-      for i in xrange(0,self.totalLabels):
+      for i in range(self.totalLabels):
         slicer.mrmlScene.RemoveNode(self.cliNodes[i])
       self.cliNodes = None
       self.grayscaleSelector.enabled = bool(self.grayscaleNode) and bool(self.labelNode) and not bool(self.cliNodes)
@@ -611,8 +585,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     labelValue = int(self.labelValueSelector.value)
     oldNode = self.cliNodes[labelValue]
     resultText = ''
-    #for i in xrange(0,22):
-    for i in xrange(0,24):
+    for i in range(24):
       newResult = newNode.GetParameterDefault(3,i)
       if (newResult != '--'):
         oldResult = oldNode.GetParameterDefault(3,i)
@@ -784,72 +757,164 @@ class QuantitativeIndicesToolLogic(ScriptedLoadableModuleLogic):
 
     return newCLINode
 
+from DICOMLib import DICOMUtils
 class QuantitativeIndicesToolTest(ScriptedLoadableModuleTest):
 #class QuantitativeIndicesToolTest(unittest.TestCase):
   """
   This is the test case for your scripted module.
   """
 
-  def delayDisplay(self,message,msec=1000):
-    """This utility method displays a small dialog and waits.
-    This does two things: 1) it lets the event loop catch up
-    to the state of the test so that rendering and widget updates
-    have all taken place before the test continues and 2) it
-    shows the user/developer/tester the state of the test
-    so that we'll know when it breaks.
-    """
-    print(message)
-    self.info = qt.QDialog()
-    self.infoLayout = qt.QVBoxLayout()
-    self.info.setLayout(self.infoLayout)
-    self.label = qt.QLabel(message,self.info)
-    self.infoLayout.addWidget(self.label)
-    qt.QTimer.singleShot(msec, self.info.close)
-    self.info.exec_()
-
   def setUp(self):
-    """ Do whatever is needed to reset the state - typically a scene clear will be enough.
+    """ Open temporary DICOM database
     """
     slicer.mrmlScene.Clear(0)
+    self.tempDataDir = os.path.join(slicer.app.temporaryPath,'PETTest')
+    self.tempDicomDatabaseDir = os.path.join(slicer.app.temporaryPath,'PETTestDicom')
 
   def runTest(self):
     """Run as few or as many tests as needed here.
     """
     self.setUp()
     self.test_QuantitativeIndicesTool1()
+    self.tearDown()
+
+  def doCleanups(self):
+    """ cleanup temporary data in case an exception occurs
+    """
+    self.tearDown()
+
+  def tearDown(self):
+    """ Close temporary DICOM database and remove temporary data
+    """
+    try:
+      import shutil
+      if os.path.exists(self.tempDataDir):
+        shutil.rmtree(self.tempDataDir)
+    except Exception as e:
+      import traceback
+      traceback.print_exc()
+      self.delayDisplay('Test caused exception!\n' + str(e))
+
+  def loadTestData(self):
+    self.patienName = 'QIN-HEADNECK-01-0139'
+    #download data and add to dicom database
+    zipFileUrl = 'http://slicer.kitware.com/midas3/download/item/257234/QIN-HEADNECK-01-0139-PET.zip'
+    zipFilePath = self.tempDataDir+'/dicom.zip'
+    zipFileData = self.tempDataDir+'/dicom'
+    expectedNumOfFiles = 545
+    if not os.access(self.tempDataDir, os.F_OK):
+      os.mkdir(self.tempDataDir)
+    if not os.access(zipFileData, os.F_OK):
+      os.mkdir(zipFileData)
+      slicer.util.downloadAndExtractArchive( zipFileUrl, zipFilePath, zipFileData, expectedNumOfFiles)
+    DICOMUtils.importDicom(zipFileData)
+
+    # load dataset
+    dicomFiles = slicer.util.getFilesInDirectory(zipFileData)
+    loadablesByPlugin, loadEnabled = DICOMUtils.getLoadablesFromFileLists([dicomFiles],['DICOMScalarVolumePlugin'])
+    loadedNodeIDs = DICOMUtils.loadLoadables(loadablesByPlugin)
+    imageNode = slicer.mrmlScene.GetNodeByID(loadedNodeIDs[0])
+    imageNode.SetSpacing(3.3940266832237, 3.3940266832237, 2.02490234375) # mimic spacing as produced by Slicer 4.10 for which the test was originally developed
+    imageNode.SetOrigin(285.367523193359375,494.58682250976556816,-1873.3819580078125) # mimic origin as produced by Slicer 4.10 for which the test was originally developed
+
+    # apply the SUVbw conversion factor and set units and quantity
+    suvNormalizationFactor = 0.00040166400000000007
+    quantity = slicer.vtkCodedEntry()
+    quantity.SetFromString('CodeValue:126400|CodingSchemeDesignator:DCM|CodeMeaning:Standardized Uptake Value')
+    units = slicer.vtkCodedEntry()
+    units.SetFromString('CodeValue:{SUVbw}g/ml|CodingSchemeDesignator:UCUM|CodeMeaning:Standardized Uptake Value body weight')
+    multiplier = vtk.vtkImageMathematics()
+    multiplier.SetOperationToMultiplyByK()
+    multiplier.SetConstantK(suvNormalizationFactor)
+    multiplier.SetInput1Data(imageNode.GetImageData())
+    multiplier.Update()
+    imageNode.GetImageData().DeepCopy(multiplier.GetOutput())
+    imageNode.GetVolumeDisplayNode().SetWindowLevel(6,3)
+    imageNode.GetVolumeDisplayNode().SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
+    imageNode.SetVoxelValueQuantity(quantity)
+    imageNode.SetVoxelValueUnits(units)
+
+    return imageNode
 
   def test_QuantitativeIndicesTool1(self):
-    """ Ideally you should have several levels of tests.  At the lowest level
-    tests sould exercise the functionality of the logic with different inputs
-    (both valid and invalid).  At higher levels your tests should emulate the
-    way the user would interact with your code and confirm that it still works
-    the way you intended.
-    One of the most important features of the tests is that it should alert other
-    developers when their changes will have an impact on the behavior of your
-    module.  For example, if a developer removes a feature that you depend on,
-    your test should break so they know that the feature is needed.
+    """ produce measurements using QuantitativeIndicesTool and verify results
     """
+    try:
+      self.assertIsNotNone( slicer.modules.quantitativeindicescli )
+      with DICOMUtils.TemporaryDICOMDatabase(self.tempDicomDatabaseDir) as db:
+        self.assertTrue(db.isOpen)
+        self.assertEqual(slicer.dicomDatabase, db)
 
-    self.delayDisplay("Starting the test")
-    #
-    # first, get some data
-    #
-    import urllib
-    downloads = (
-        ('http://slicer.kitware.com/midas3/download?items=5767', 'FA.nrrd', slicer.util.loadVolume),
-        )
+        m = slicer.util.mainWindow()
+        m.moduleSelector().selectModule('QuantitativeIndicesTool')
+        widget = slicer.modules.QuantitativeIndicesToolWidget
 
-    for url,name,loader in downloads:
-      filePath = slicer.app.temporaryPath + '/' + name
-      if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
-        print('Requesting download %s from %s...\n' % (name, url))
-        urllib.urlretrieve(url, filePath)
-      if loader:
-        print('Loading %s...\n' % (name,))
-        loader(filePath)
-    self.delayDisplay('Finished with download and loading\n')
+        self.delayDisplay('Loading PET DICOM dataset (including download if necessary)')
+        petNode = self.loadTestData()
+        widget.grayscaleSelector.setCurrentNode(petNode)
 
-    volumeNode = slicer.util.getNode(pattern="FA")
-    logic = QuantitativeIndicesToolLogic()
-    self.assertTrue( logic.hasImageData(volumeNode) )
-    self.delayDisplay('Test passed!')
+        self.delayDisplay('Creating segmentations')
+        segmentationNode = slicer.vtkMRMLSegmentationNode()
+        slicer.mrmlScene.AddNode(segmentationNode)
+        segmentationNode.CreateDefaultDisplayNodes()
+        segmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(petNode)
+
+        import vtkSegmentationCorePython as vtkSegmentationCore
+        # Geometry for each segment is defined by: radius, posX, posY, posZ
+        segmentGeometries = [[30,-54,232,-980], [30,-41,232,-1065], [50,112,232,-1264]]
+        for segmentGeometry in segmentGeometries:
+          sphereSource = vtk.vtkSphereSource()
+          sphereSource.SetRadius(segmentGeometry[0])
+          sphereSource.SetCenter(segmentGeometry[1], segmentGeometry[2], segmentGeometry[3])
+          sphereSource.Update()
+          segment = vtkSegmentationCore.vtkSegment()
+          uniqueSegmentID = segmentationNode.GetSegmentation().GenerateUniqueSegmentID("Test")
+          segmentationNode.AddSegmentFromClosedSurfaceRepresentation(sphereSource.GetOutput(), uniqueSegmentID)
+
+        labelNode = slicer.vtkMRMLLabelMapVolumeNode()
+        slicer.mrmlScene.AddNode(labelNode)
+        labelNode.CreateDefaultDisplayNodes()
+        slicer.modules.segmentations.logic().ExportAllSegmentsToLabelmapNode(segmentationNode, labelNode)
+        widget.labelSelector.setCurrentNode(labelNode)
+
+        self.delayDisplay('Calculating measurements for label 1')
+        widget.onParameterSetButton()
+        widget.onSelectAllButton()
+        widget.onCalculateButton()
+        values = {'Mean':3.67861, \
+          'Peak':17.335,\
+          'Volume':96.9882,\
+          'SAM':199.284,\
+          'Q1 Distribution':78.7157,\
+          'TLG':356.782}
+        self._verifyResults(widget.resultsFrameLabel.text, values)
+
+        self.delayDisplay('Calculating measurements for label 2')
+        widget.labelValueSelector.setValue(2)
+        widget.onCalculateButton()
+        values = {'Mean':3.49592, \
+          'Peak':19.2768,\
+          'Volume':96.4284,\
+          'SAM':206.139,\
+          'Q1 Distribution':83.9865,\
+          'TLG':337.106}
+        self._verifyResults(widget.resultsFrameLabel.text, values)
+
+        self.delayDisplay('Test passed!')
+
+    except Exception as e:
+      import traceback
+      traceback.print_exc()
+      self.delayDisplay('Test caused exception!\n' + str(e))
+
+  def _verifyResults(self, resultsString, referenceMeasurements={}):
+    assert(resultsString!=None)
+    matchedMeasurements = set()
+    for line in resultsString.split('\n'):
+      items = line.split(':')
+      if len(items)<2: continue
+      index,value = items[0], float(items[1].strip())
+      if index in referenceMeasurements:
+        matchedMeasurements.add(index)
+        self.assertTrue(abs(float(value)-referenceMeasurements[index])<0.01) # account for potential rounding differences
+    self.assertTrue(len(matchedMeasurements)==len(referenceMeasurements))
