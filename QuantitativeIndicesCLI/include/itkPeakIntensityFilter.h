@@ -15,7 +15,7 @@ public:
   typedef ProcessObject            Superclass;
   typedef SmartPointer<Self>       Pointer;
   typedef SmartPointer<const Self> ConstPointer;
-  
+
   /** Useful class typedefs*/
   typedef TImage                           ImageType;
   typedef typename ImageType::Pointer      ImagePointer;
@@ -31,15 +31,15 @@ public:
   typedef typename LabelImageType::ConstPointer LabelImageConstPointer;
   typedef typename LabelImageType::PixelType    LabelPixelType;
   typedef typename itk::Image<double, ImageType::ImageDimension> InternalImageType;
-  
+
   itkNewMacro( Self );
-  
+
   /** Dimension of the underlying image. */
-  itkStaticConstMacro(ImageDimension, unsigned int, ImageType::ImageDimension); 
+  itkStaticConstMacro(ImageDimension, unsigned int, ImageType::ImageDimension);
 
   /** Run-time type information (and related methods). */
   itkTypeMacro(PeakIntensityFilter, ProcessObject);
-  
+
   /** Set/Get functions for the images, in const and non-const form */
   void SetInputImage( const ImageType* input );
   void SetInputLabelImage( const LabelImageType* input );
@@ -59,19 +59,19 @@ public:
   itkSetMacro(UseInteriorOnly, bool);
   itkSetMacro(UseApproximateKernel, bool);
   itkGetMacro(KernelImage, typename InternalImageType::Pointer);
-  
+
   /** Set the radii of the peak kernel for all dimensions. */
   void SetSphereRadius(double r);
-  
+
   /** Sets the volume of the sphere and updates the radii. Should only be used for 3-D sphere. */
   void SetSphereVolume(double volume);
-  
+
   /** Determines the total volume of the kernel based on the voxel size and weights */
   double GetKernelVolume();
-  
+
   /** Creates the peak kernel based on image spacing and kernel size */
   void BuildPeakKernel();
-  
+
   /** Applies the peak kernel to determine peak intensity value */
   void CalculatePeak();
 
@@ -79,24 +79,24 @@ public:
 protected:
   PeakIntensityFilter();
   ~PeakIntensityFilter();
-  virtual void PrintSelf(std::ostream& os, Indent indent) const;
-  
+  virtual void PrintSelf(std::ostream& os, Indent indent) const override;
+
   typedef typename itk::Neighborhood<double, ImageType::ImageDimension> NeighborhoodType;
   typedef typename itk::NeighborhoodOperatorImageFunction<ImageType, double> NeighborhoodOperatorImageFunctionType;
   typedef typename itk::NeighborhoodOperatorImageFunction<LabelImageType, int> LabelNeighborhoodOperatorImageFunctionType;
-  
-  void GenerateData();
-  
+
+  void GenerateData() override;
+
   void ApproximatePeakKernel();
   void MakeKernelOperators( NeighborhoodOperatorImageFunctionType* neighborhoodOperator,
                             LabelNeighborhoodOperatorImageFunctionType* labelNeighborhoodOperator );
   void ExtractLabelRegion();
   void CalculateSphereRadius();
-  
+
   double FEdge( double r, double a, double b );
   double FCorner( double r, double a, double b, double c );
   double GetVoxelVolume( double r, double x, double y, double z, double spx, double spy, double spz );
-  
+
 private:
   PeakIntensityFilter(const PeakIntensityFilter&); //purposely not implemented
   void operator=(const PeakIntensityFilter&); //purposely not implemented

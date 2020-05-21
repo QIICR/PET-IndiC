@@ -15,12 +15,12 @@ public:
   typedef ProcessObject  Superclass;
   typedef SmartPointer<Self>       Pointer;
   typedef SmartPointer<const Self> ConstPointer;
-  
+
   typedef TImage                  ImageType;
   typedef typename ImageType::Pointer      ImagePointer;
   typedef typename ImageType::ConstPointer ImageConstPointer;
   typedef typename ImageType::PixelType     PixelType;
-  
+
 
   typedef TLabelImage                  LabelImageType;
   typedef typename LabelImageType::Pointer      LabelImagePointer;
@@ -29,10 +29,10 @@ public:
   itkNewMacro( Self );
 
   typedef typename ImageType::PointType PointType;
-  
+
   /** Run-time type information (and related methods). */
   itkTypeMacro(QuantitativeIndicesComputationFilter, ProcessObject);
-  
+
   //Set functions for the images, in const and non-const form
   void SetInputImage( const ImageType* input );
   void SetInputLabelImage( const LabelImageType* input );
@@ -76,12 +76,12 @@ public:
 protected:
   QuantitativeIndicesComputationFilter();
   ~QuantitativeIndicesComputationFilter();
-  virtual void PrintSelf(std::ostream& os, Indent indent) const;
-  
-  void GenerateData();
+  virtual void PrintSelf(std::ostream& os, Indent indent) const override;
+
+  void GenerateData() override;
   void CreateSegmentedValueList();
 
-  
+
 private:
   QuantitativeIndicesComputationFilter(const QuantitativeIndicesComputationFilter&); //purposely not implemented
   void operator=(const QuantitativeIndicesComputationFilter&); //purposely not implemented
