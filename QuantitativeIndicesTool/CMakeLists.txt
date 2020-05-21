@@ -4,6 +4,8 @@ set(MODULE_NAME QuantitativeIndicesTool)
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
+  PETVolumeSegmentStatisticsPlugin/__init__.py
+  PETVolumeSegmentStatisticsPlugin/PETVolumeSegmentStatisticsPlugin.py
   )
 
 set(MODULE_PYTHON_RESOURCES
@@ -26,4 +28,3 @@ if(BUILD_TESTING)
   # Additional build-time testing
   add_subdirectory(Testing)
 endif()
-

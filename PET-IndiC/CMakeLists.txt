@@ -4,8 +4,6 @@ set(MODULE_NAME PETIndiC)
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
-  PETVolumeSegmentStatisticsPlugin/__init__.py
-  PETVolumeSegmentStatisticsPlugin/PETVolumeSegmentStatisticsPlugin.py
   )
 
 set(MODULE_PYTHON_RESOURCES
@@ -26,7 +24,7 @@ if(BUILD_TESTING)
   # Note that the test will also be available at runtime.
   slicer_add_python_unittest(SCRIPT ${MODULE_NAME}.py
     SLICER_ARGS --additional-module-paths ${DEPENDENCIES_ADDITIONAL_MODULE_PATHS})
-    
+
   # Additional build-time testing
   add_subdirectory(Testing)
 endif()

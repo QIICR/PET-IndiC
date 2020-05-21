@@ -3,8 +3,6 @@ import unittest
 from __main__ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
-from SegmentStatistics import SegmentStatisticsLogic
-from PETVolumeSegmentStatisticsPlugin import PETVolumeSegmentStatisticsPlugin
 
 #
 # PETIndiC
@@ -22,16 +20,13 @@ class PETIndiC(ScriptedLoadableModule):
     self.parent.dependencies = ["QuantitativeIndicesTool"]
     self.parent.contributors = ["Ethan Ulrich (Univ. of Iowa), Christian Bauer (Univ. of Iowa), Markus van Tol (Univ. of Iowa), Reinhard R. Beichel (Univ. of Iowa), John Buatti (Univ. of Iowa)"] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
-    The PET-IndiC extension allows for fast segmentation of regions of interest and calculation of quantitative indices. 
-    For more information about the indices calculated, see 
+    The PET-IndiC extension allows for fast segmentation of regions of interest and calculation of quantitative indices.
+    For more information about the indices calculated, see
     <a href=\"http://www.slicer.org/slicerWiki/index.php/Documentation/4.4/Modules/QuantitativeIndicesCLI#Module_Description\">here</a>
     ."""
     self.parent.acknowledgementText = """
     This work is funded in part by Quantitative Imaging to Assess Response in Cancer Therapy Trials NIH grant U01-CA140206 and Quantitative Image Informatics for Cancer Research (QIICR) NIH grant U24 CA180918.""" # replace with organization, grant and thanks.
-    
-    # register segment statistics plugin
-    petSegmentStatisticsPlugin = PETVolumeSegmentStatisticsPlugin()
-    SegmentStatisticsLogic.registerPlugin( petSegmentStatisticsPlugin )
+
 
 #
 # PETIndiCWidget
@@ -45,7 +40,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
     self.logic = PETIndiCLogic()
-    
+
     self.moduleVisible = True
 
     sliceNodes = slicer.util.getNodes('vtkMRMLSliceNode*')
@@ -96,7 +91,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     #self.labelSelector.setMRMLScene( slicer.mrmlScene )
     self.labelSelector.setToolTip( "Select active segmentation image or create a new one." )
     imagesFormLayout.addRow("Label Image: ", self.labelSelector)
-    
+
     #
     # window/level presets
     #
@@ -106,22 +101,22 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     self.presetsFrame.layout().setMargin(0)
     imagesFormLayout.addRow("W/L Presets:", self.presetsFrame)
     self.preset1Button = qt.QPushButton("FDG PET")
-    self.preset1Button.toolTip = "PET SUV image preset (W/L=6/3)" 
+    self.preset1Button.toolTip = "PET SUV image preset (W/L=6/3)"
     self.presetsFrame.layout().addWidget(self.preset1Button)
     self.preset2Button = qt.QPushButton("PET Rainbow")
-    self.preset2Button.toolTip = "PET SUV image preset (W/L=22.6/9.3)" 
+    self.preset2Button.toolTip = "PET SUV image preset (W/L=22.6/9.3)"
     self.presetsFrame.layout().addWidget(self.preset2Button)
     self.preset3Button = qt.QPushButton("FLT PET")
-    self.preset3Button.toolTip = "PET SUV image preset (W/L=4/2)" 
+    self.preset3Button.toolTip = "PET SUV image preset (W/L=4/2)"
     self.presetsFrame.layout().addWidget(self.preset3Button)
     self.preset4Button = qt.QPushButton("Auto")
-    self.preset4Button.toolTip = "Automatically determines a window/level based on the dynamic range" 
+    self.preset4Button.toolTip = "Automatically determines a window/level based on the dynamic range"
     self.presetsFrame.layout().addWidget(self.preset4Button)
     self.preset1Button.setEnabled(0)
     self.preset2Button.setEnabled(0)
     self.preset3Button.setEnabled(0)
     self.preset4Button.setEnabled(0)
-    
+
     #
     # editor effects
     #
@@ -129,7 +124,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     self.editorWidget = slicer.modules.EditorWidget
     self.layout.addWidget(self.editorWidget.editLabelMapsFrame)
     self.editorWidget.editLabelMapsFrame.collapsed = False
-    
+
     #
     # quantitative indices
     #
@@ -170,7 +165,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     self.deselectAllButton = self.qiWidget.deselectAllButton
     self.calculateButton = self.qiWidget.calculateButton
     self.calculateButton.hide()
-    
+
     #
     # recalculate button
     #
@@ -179,7 +174,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     self.recalculateButton.toolTip = "Recalculate using current quantitative features."
     self.recalculateButton.enabled = False
     self.qiWidget.featuresFormLayout.addRow(self.recalculateButton)
-    
+
     #
     # units display
     #
@@ -190,7 +185,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     self.unitsFrameLabel = qt.QLabel('Voxel Units: ', self.unitsFrame)
     self.unitsFrame.layout().addWidget(self.unitsFrameLabel)
     self.layout.addWidget(self.unitsFrame)
-    
+
     #
     # results table
     #
@@ -259,12 +254,12 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
       except AttributeError:
         pass
     self.items = []
-  
+
   def enter(self):
     self.moduleVisible = True
     if not self.resultsTable.visible: # update values when widget opens
       self.calculateIndicesFromCurrentLabel(self.editorWidget.toolsColor.colorSpin.value)
-      
+
   def exit(self):
     self.moduleVisible = False
     self.editorWidget.exit()
@@ -294,39 +289,39 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
       if units == '(could not retrieve units information)':
         self.resultsTable.removeColumn(2) # no units information
       self.unitsFrameLabel.setText('Voxel Units: ' + units)
-        
+
       appLogic = slicer.app.applicationLogic()
       selNode = appLogic.GetSelectionNode()
       selNode.SetReferenceActiveVolumeID(volumeNode.GetID())
       selNode.SetReferenceActiveLabelVolumeID(labelNode.GetID())
       appLogic.PropagateVolumeSelection()
-      
+
       self.preset1Button.setEnabled(1)
       self.preset2Button.setEnabled(1)
       self.preset3Button.setEnabled(1)
       self.preset4Button.setEnabled(1)
-      
+
       if volumeNode.GetName() not in self.volumeDictionary:
         self.volumeDictionary[volumeNode.GetName()] = volumeNode
         # TODO figure out how to observe only image data changes,
         # currently this is also triggered when the image name changes
         volumeNode.observerTag = labelNode.AddObserver('ModifiedEvent', self.labelModified)
-        
+
       self.calculateIndicesFromCurrentLabel(self.editorWidget.toolsColor.colorSpin.value)
-      
+
     else:
       self.preset1Button.setEnabled(0)
       self.preset2Button.setEnabled(0)
       self.preset3Button.setEnabled(0)
       self.preset4Button.setEnabled(0)
       self.resultsTable.visible = False
-            
+
 
   def onPreset1Button(self):
     if self.inputSelector.currentNode():
       imageNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
       self.logic.presetSUVInvertedGrey(imageNode)
-     
+
   def onPreset2Button(self):
     if self.inputSelector.currentNode():
       imageNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
@@ -341,7 +336,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     if self.inputSelector.currentNode():
       imageNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
       self.logic.presetGreyAuto(imageNode)
-      
+
   def labelModified(self, caller, event):
     if caller.GetID() == self.labelSelector.currentNodeID:
       self.resultsTable.visible = False
@@ -367,7 +362,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
           else:
             print('ERROR: could not read output of Quantitative Indices Calculator')
           pd.setValue(100)
-      
+
   def calculateIndicesFromCurrentLabel(self, labelValue):
     self.resultsTable.visible = False
     if not self.moduleVisible: # do not calculate values if module is not shown
@@ -390,19 +385,19 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
           else:
             print('ERROR: could not read output of Quantitative Indices Calculator')
           pd.setValue(100)
-  
+
   def onFeatureSelectionChanged(self):
     self.recalculateButton.enabled = True
-    
+
   def onRecalculate(self):
     self.recalculateButton.enabled = False
     self.calculateIndicesFromCurrentLabel(self.editorWidget.toolsColor.colorSpin.value)
-            
+
   def calculateIndices(self, volumeNode, labelNode, cliNode, labelValue):
     newNode = None
     newNode = self.logic.calculateOnLabelModified(volumeNode, labelNode, cliNode, labelValue, self.MeanCheckBox.checked, self.StdDevCheckBox.checked, self.MinCheckBox.checked, self.MaxCheckBox.checked, self.Quart1CheckBox.checked, self.MedianCheckBox.checked, self.Quart3CheckBox.checked, self.UpperAdjacentCheckBox.checked, self.Q1CheckBox.checked, self.Q2CheckBox.checked, self.Q3CheckBox.checked, self.Q4CheckBox.checked, self.Gly1CheckBox.checked, self.Gly2CheckBox.checked, self.Gly3CheckBox.checked, self.Gly4CheckBox.checked, self.TLGCheckBox.checked, self.SAMCheckBox.checked, self.SAMBGCheckBox.checked, self.RMSCheckBox.checked, self.PeakCheckBox.checked, self.VolumeCheckBox.checked)
     return newNode
-    
+
   def populateResultsTable(self, vtkMRMLCommandLineModuleNode):
     """Reads the output of QuantitativeIndicesCLI and populates the results table"""
     newNode = vtkMRMLCommandLineModuleNode
@@ -446,7 +441,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     rowHeight = self.resultsTable.rowHeight(0)
     self.resultsTable.setFixedHeight(rowHeight*(numRows+1)+1)
     self.resultsTable.visible = True
-    slicer.mrmlScene.RemoveNode(newNode)      
+    slicer.mrmlScene.RemoveNode(newNode)
 
 #
 # PETIndiCLogic
@@ -498,7 +493,7 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
       caster.Update()
       newLabelData.DeepCopy(caster.GetOutput())
       imageNode.SetAndObserveImageData(newLabelData)
-      
+
       multiplier = vtk.vtkImageMathematics()
       multiplier.SetOperationToMultiplyByK()
       multiplier.SetConstantK(0)
@@ -508,7 +503,7 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
         multiplier.SetInput1Data(imageNode.GetImageData())
       multiplier.Update()
       imageNode.GetImageData().DeepCopy(multiplier.GetOutput())
-       
+
       imageNode.SetName(imageName + '_label')
 
     return imageNode
@@ -520,7 +515,7 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
     displayNode.SetWindowLevel(6,3)
     displayNode.SetInterpolate(0)
     displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
-    
+
   def presetSUVRainbow(self, imageNode):
     print('  Changing W/L to 22.6/9.3')
     displayNode = imageNode.GetVolumeDisplayNode()
@@ -528,7 +523,7 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
     displayNode.SetWindowLevel(22.6,9.3)
     displayNode.SetInterpolate(0)
     displayNode.SetAndObserveColorNodeID('vtkMRMLPETProceduralColorNodePET-Rainbow')
-    
+
   def presetSUVInvertedGreyFLT(self, imageNode):
     print('  Changing W/L to 4/2')
     displayNode = imageNode.GetVolumeDisplayNode()
@@ -536,7 +531,7 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
     displayNode.SetWindowLevel(4,2)
     displayNode.SetInterpolate(0)
     displayNode.SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
-    
+
   def presetGreyAuto(self, imageNode):
     print('  Automatically determining W/L')
     displayNode = imageNode.GetVolumeDisplayNode()
@@ -551,19 +546,19 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
     elif imageNode.GetVoxelValueUnits():
       units =  imageNode.GetVoxelValueUnits().GetCodeValue()
     return units
-    
+
   def calculateOnLabelModified(self, scalarVolume, labelVolume, cliNode, labelValue, meanFlag, stddevFlag, minFlag,
-                        maxFlag, quart1Flag, medianFlag, quart3Flag, upperAdjacentFlag, q1Flag, q2Flag, q3Flag, 
-                        q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag, TLGFlag, SAMFlag, SAMBGFlag, RMSFlag, 
+                        maxFlag, quart1Flag, medianFlag, quart3Flag, upperAdjacentFlag, q1Flag, q2Flag, q3Flag,
+                        q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag, TLGFlag, SAMFlag, SAMBGFlag, RMSFlag,
                         PeakFlag, VolumeFlag):
     #print('      Recalculating QIs')
     qiLogic = slicer.modules.QuantitativeIndicesToolWidget.logic
     node = qiLogic.run(scalarVolume,labelVolume,cliNode,labelValue,meanFlag, stddevFlag, minFlag,
-                        maxFlag, quart1Flag, medianFlag, quart3Flag, upperAdjacentFlag, q1Flag, q2Flag, q3Flag, 
-                        q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag, TLGFlag, SAMFlag, SAMBGFlag, RMSFlag, 
+                        maxFlag, quart1Flag, medianFlag, quart3Flag, upperAdjacentFlag, q1Flag, q2Flag, q3Flag,
+                        q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag, TLGFlag, SAMFlag, SAMBGFlag, RMSFlag,
                         PeakFlag, VolumeFlag)
     return node
-    
+
   def getUnitsForIndex(self, imageUnits, indexName):
     """Attemto interpret units """
     if imageUnits not in ['{SUVbw}g/ml','{SUVlbm}g/ml','{SUVibw}g/ml']: # TODO '{SUVbsa}cm2/ml'
@@ -584,7 +579,7 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
       else:
         print('WARNING: could not interpret units for '+ indexName +'. Units: '+ imageUnits)
         return '-'
-  
+
   def hasImageData(self,volumeNode):
     """This is an example logic method that
     returns true if the passed in volume
@@ -636,7 +631,7 @@ class CustomTableWidget(qt.QTableWidget):
   """Allows for copying the table to clipboard"""
   def __init__(self, parent=None):
     super(CustomTableWidget, self).__init__(parent)
-    
+
   def keyPressEvent(self, event):
     if event.matches(qt.QKeySequence.Copy):
       self.copyCells()
@@ -658,7 +653,7 @@ class CustomTableWidget(qt.QTableWidget):
           text += '\n'
     #print text
     qt.QApplication.clipboard().setText(text)
-    
+
   def getSelectedCells(self):
     cells = []
     for row in range(0, self.rowCount):
@@ -667,7 +662,7 @@ class CustomTableWidget(qt.QTableWidget):
         if cell.isSelected():
           cells.append([row,col])
     return cells
-    
+
 from DICOMLib import DICOMUtils
 class PETIndiCTest(ScriptedLoadableModuleTest):
   """
@@ -682,7 +677,7 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
     self.setUp()
     self.test_PETIndiC()
     self.tearDown()
-    
+
   def setUp(self):
     """ Open temporary DICOM database
     """
@@ -693,12 +688,12 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
 
   def doCleanups(self):
     """ cleanup temporary data in case an exception occurs
-    """ 
-    self.tearDown()    
-  
+    """
+    self.tearDown()
+
   def tearDown(self):
     """ Close temporary DICOM database and remove temporary data
-    """ 
+    """
     try:
       import shutil
       if os.path.exists(self.tempDataDir):
@@ -707,7 +702,7 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
       import traceback
       traceback.print_exc()
       self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
-  
+
   def loadTestData(self):
     self.patienName = 'QIN-HEADNECK-01-0139'
     #download data and add to dicom database
@@ -721,7 +716,7 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
       os.mkdir(zipFileData)
       slicer.util.downloadAndExtractArchive( zipFileUrl, zipFilePath, zipFileData, expectedNumOfFiles)
     DICOMUtils.importDicom(zipFileData)
-    
+
     # load dataset
     dicomFiles = slicer.util.getFilesInDirectory(zipFileData)
     loadablesByPlugin, loadEnabled = DICOMUtils.getLoadablesFromFileLists([dicomFiles],['DICOMScalarVolumePlugin'])
@@ -740,7 +735,7 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
     multiplier.SetOperationToMultiplyByK()
     multiplier.SetConstantK(suvNormalizationFactor)
     multiplier.SetInput1Data(imageNode.GetImageData())
-    multiplier.Update()  
+    multiplier.Update()
     imageNode.GetImageData().DeepCopy(multiplier.GetOutput())
     imageNode.GetVolumeDisplayNode().SetWindowLevel(6,3)
     imageNode.GetVolumeDisplayNode().SetAndObserveColorNodeID('vtkMRMLColorTableNodeInvertedGrey')
@@ -748,17 +743,17 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
     imageNode.SetVoxelValueUnits(units)
 
     return imageNode
-    
+
   def test_PETIndiC(self):
     """ test standard segmentation and report generation
-    """ 
+    """
     try:
       self.assertIsNotNone( slicer.modules.petindic )
       self.assertIsNotNone( slicer.modules.quantitativeindicescli )
       with DICOMUtils.TemporaryDICOMDatabase(self.tempDicomDatabaseDir) as db:
         self.assertTrue(db.isOpen)
         self.assertEqual(slicer.dicomDatabase, db)
-     
+
         self.delayDisplay('Loading PET DICOM dataset (including download if necessary)')
         petNode = self.loadTestData()
         m = slicer.util.mainWindow()
@@ -767,25 +762,25 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
         widget.inputSelector.setCurrentNode(petNode)
         labelNode = widget.labelSelector.currentNode()
         self.assertIsNotNone(labelNode)
-        
+
         upperThreshold = 89.85#10000
-    
+
         self.delayDisplay('Producing segmentation')
         widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
         thresholdOptions = widget.editorWidget.toolsBox.currentOption
         thresholdOptions.threshold.minimumValue = 30
         thresholdOptions.threshold.maximumValue = upperThreshold
         thresholdOptions.onApply()
-    
+
         self.delayDisplay('Checking initial measurement results')
         t = widget.resultsTable
         self.assertTrue(t.rowCount<22 and t.rowCount>0) # per default there are some but not all features selected
         self._verifyResults(t)
-    
+
         self.delayDisplay('Updating measurements for selecting all features and verifying results')
         widget.qiWidget.selectAllButton.click()
         widget.recalculateButton.click()
-        self.assertTrue(t.rowCount==22)    
+        self.assertTrue(t.rowCount==22)
         values = {'Mean':(57.1303,'SUVbw'), \
           'Peak':(84.8634,'SUVbw'),\
           'Volume':(51.6897,'ml'),
@@ -793,7 +788,7 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
           'Q1 Distribution':(29.3321,'%'),
           'TLG':(2953.05,'SUVbw*ml')}
         self._verifyResults(t, values)
-    
+
         self.delayDisplay('Updating segmentation and verifying results')
         widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
         thresholdOptions = widget.editorWidget.toolsBox.currentOption
@@ -801,9 +796,9 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
         thresholdOptions.threshold.maximumValue = upperThreshold
         thresholdOptions.onApply()
         self._verifyResults(t, {'Mean':(53.8255,'SUVbw')})
-    
+
         self.delayDisplay('Creating segmentation with new label')
-        colorSpin = widget.editorWidget.toolsColor.colorSpin    
+        colorSpin = widget.editorWidget.toolsColor.colorSpin
         colorSpin.value=2
         self.assertFalse(t.visible)
         widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
@@ -818,20 +813,20 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
         thresholdOptions.threshold.maximumValue = upperThreshold
         thresholdOptions.onApply()
         self._verifyResults(t, {'Mean':(72.8926,'SUVbw')})
-    
+
         self.delayDisplay('Testing undo/redo')
         widget.editorWidget.toolsBox.buttons['PreviousCheckPoint'].click()
         self._verifyResults(t, {'Mean':(68.0497,'SUVbw')})
         widget.editorWidget.toolsBox.buttons['NextCheckPoint'].click()
         self._verifyResults(t, {'Mean':(72.8926,'SUVbw')})
-    
+
         self.delayDisplay('Test passed!')
 
     except Exception as e:
       import traceback
       traceback.print_exc()
       self.delayDisplay('Test caused exception!\n' + str(e),self.delayMs*2)
-    
+
   def _verifyResults(self, table, referenceMeasurements={}):
     self.assertTrue(table.columnCount==3)
     self.assertTrue(table.horizontalHeaderItem(0).text()=='Index')
@@ -847,8 +842,3 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
         self.assertTrue(abs(float(value)-referenceMeasurements[index][0])<0.01) # account for potential rounding differences
         self.assertTrue(units==referenceMeasurements[index][1])
     self.assertTrue(len(matchedMeasurements)==len(referenceMeasurements))
-    
-    
-     
-     
-     

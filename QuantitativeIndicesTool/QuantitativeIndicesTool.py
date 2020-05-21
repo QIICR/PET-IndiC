@@ -2,6 +2,8 @@ import os
 import unittest
 from __main__ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
+from SegmentStatistics import SegmentStatisticsLogic
+from PETVolumeSegmentStatisticsPlugin import PETVolumeSegmentStatisticsPlugin
 
 #
 # QuantitativeIndices
@@ -16,7 +18,7 @@ class QuantitativeIndicesTool(ScriptedLoadableModule):
     parent.contributors = ["Ethan Ulrich (University of Iowa), Andrey Fedorov (SPL), Markus van Tol (University of Iowa), Christian Bauer (University of Iowa), Reinhard Beichel (University of Iowa), John Buatti (University of Iowa)"] # replace with "Firstname Lastname (Org)"
     parent.helpText = """
     This extension calculates simple quantitative features from a grayscale volume and label map.\n
-    Once both volumes have been selected, a parameter set must be generated.  Quantitative indices 
+    Once both volumes have been selected, a parameter set must be generated.  Quantitative indices
     may be calculated on individual values of the label map.  Even if different indices are calculated
     at different times on the same label value, the previous calculations will be stored.
     """
@@ -24,6 +26,10 @@ class QuantitativeIndicesTool(ScriptedLoadableModule):
     This work is funded in part by Quantitative Imaging to Assess Response in Cancer Therapy Trials NIH grant U01-CA140206 and Quantitative Image Informatics for Cancer Research (QIICR) NIH grant U24 CA180918.
     """ # replace with organization, grant and thanks.
     #self.parent = parent
+
+    # register segment statistics plugin
+    petSegmentStatisticsPlugin = PETVolumeSegmentStatisticsPlugin()
+    SegmentStatisticsLogic.registerPlugin( petSegmentStatisticsPlugin )
 
     # Add this test to the SelfTest module's list for discovery when the module
     # is created.  Since this module may be discovered before SelfTests itself,
@@ -126,7 +132,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.labelSelector.setToolTip( "Input label map volume." )
     parametersFormLayout.addRow("Label Map: ", self.labelSelector)
     self.labelNode = None
-    
+
     #
     # CLI node name and set button
     #
@@ -147,7 +153,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.parameterSetButton.setEnabled(False)
     self.parameterFrame.layout().addWidget(self.parameterSetButton)
     self.cliNodes = None
-    
+
     self.changeVolumesButton = qt.QPushButton("Change Volumes", self.parameterFrame)
     self.changeVolumesButton.setToolTip("Change the grayscale volume and/or the label map.  Previous calculations from the scene will be deleted.")
     self.changeVolumesButton.setEnabled(False)
@@ -331,18 +337,18 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.QIFrame6.layout().addWidget(self.PeakCheckBox)
     self.PeakCheckBox.checked = False
     self.PeakCheckBox.setToolTip("maximum average gray value that is calculated from a 1 cm^3 sphere placed within the region of interest")
-    
+
     self.VolumeCheckBox = qt.QCheckBox("Volume", self.QIFrame6)
     self.QIFrame6.layout().addWidget(self.VolumeCheckBox)
     self.VolumeCheckBox.checked = False
     self.VolumeCheckBox.setToolTip("volume of region of interest")
-       
+
     self.selectAllButton = qt.QPushButton("Select All")
-    self.selectAllButton.toolTip = "Select all quantitative features." 
+    self.selectAllButton.toolTip = "Select all quantitative features."
     self.QIFrame6.layout().addWidget(self.selectAllButton)
-    
+
     self.deselectAllButton = qt.QPushButton("Deselect All")
-    self.deselectAllButton.toolTip = "Deselect all quantitative features." 
+    self.deselectAllButton.toolTip = "Deselect all quantitative features."
     self.QIFrame6.layout().addWidget(self.deselectAllButton)
 
     #
@@ -352,7 +358,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.calculateButton.toolTip = "Calculate quantitative features."
     self.calculateButton.enabled = False
     self.featuresFormLayout.addRow(self.calculateButton)
-    
+
     #
     # Results Frame
     #
@@ -360,7 +366,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.resultsCollapsibleButton.text = "Results"
     self.layout.addWidget(self.resultsCollapsibleButton)
     self.resultsFormLayout = qt.QFormLayout(self.resultsCollapsibleButton)
-    
+
     self.resultsFrame = qt.QFrame(self.resultsCollapsibleButton)
     self.resultsFrame.setLayout(qt.QHBoxLayout())
     self.resultsFrame.layout().setSpacing(0)
@@ -368,7 +374,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.resultsFormLayout.addWidget(self.resultsFrame)
     self.resultsFrameLabel = qt.QLabel('', self.resultsFrame)
     self.resultsFrame.layout().addWidget(self.resultsFrameLabel)
-    
+
     # Add vertical spacer
     self.layout.addStretch(1)
 
@@ -438,7 +444,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
 
 
   def onChangeVolumesButton(self):
-    """ Bring up a warning window.  If proceeding, delete all vtkMRMLCommandLineModuleNodes that were previously 
+    """ Bring up a warning window.  If proceeding, delete all vtkMRMLCommandLineModuleNodes that were previously
     generated.  Re-enable the volume selectors and parameter set button.
     """
     if self.confirmDelete('Changing the volumes will delete any previous calculations from the scene.  Proceed?'):
@@ -453,20 +459,20 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
       self.resultsFrameLabel.setText('')
     else:
       return
-    
+
 
   def confirmDelete(self, message):
     """ Warning pop-up before deleting previously calculated nodes
     """
-    delete = qt.QMessageBox.question(slicer.util.mainWindow(),'Quantitative Indices',message, 
+    delete = qt.QMessageBox.question(slicer.util.mainWindow(),'Quantitative Indices',message,
                     qt.QMessageBox.Yes, qt.QMessageBox.No)
     return delete == qt.QMessageBox.Yes
-    
+
 
   def onLabelValueSelect(self, int):
     #TODO make this do something, possibly select the correct node associated with label value?
     pass
-    
+
 
   def onSelectAllButton(self):
     """ Check all quantitative features
@@ -493,7 +499,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.RMSCheckBox.checked = True
     self.PeakCheckBox.checked = True
     self.VolumeCheckBox.checked = True
-    
+
 
   def onDeselectAllButton(self):
     """ Uncheck all quantitative features
@@ -546,7 +552,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
       qt.QMessageBox.warning(slicer.util.mainWindow(),
           "Quantitative Indices", "Volumes do not have the same geometry.")
       return
-      
+
     self.calculateButton.text = "Working..."
     self.calculateButton.repaint()
     slicer.app.processEvents()
@@ -579,25 +585,25 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     RMSFlag = self.RMSCheckBox.checked
     PeakFlag = self.PeakCheckBox.checked
     VolumeFlag = self.VolumeCheckBox.checked
-     
-    """newNode = logic.run(self.grayscaleNode, self.labelNode, None, enableScreenshotsFlag, screenshotScaleFactor, 
+
+    """newNode = logic.run(self.grayscaleNode, self.labelNode, None, enableScreenshotsFlag, screenshotScaleFactor,
                         labelValue, meanFlag, stddevFlag, minFlag, maxFlag, quart1Flag, medianFlag, quart3Flag,
-                        upperAdjacentFlag, q1Flag, q2Flag, q3Flag, q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag, 
+                        upperAdjacentFlag, q1Flag, q2Flag, q3Flag, q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag,
                         TLGFlag, SAMFlag, SAMBGFlag, RMSFlag, PeakFlag, VolumeFlag)"""
-                        
+
     newNode = self.logic.run(self.grayscaleNode, self.labelNode, None, labelValue, meanFlag, stddevFlag, minFlag,
-                        maxFlag, quart1Flag, medianFlag, quart3Flag, upperAdjacentFlag, q1Flag, q2Flag, q3Flag, 
-                        q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag, TLGFlag, SAMFlag, SAMBGFlag, RMSFlag, 
+                        maxFlag, quart1Flag, medianFlag, quart3Flag, upperAdjacentFlag, q1Flag, q2Flag, q3Flag,
+                        q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag, TLGFlag, SAMFlag, SAMBGFlag, RMSFlag,
                         PeakFlag, VolumeFlag)
-                        
+
     newNode.SetName('Temp_CommandLineModule')
 
     self.writeResults(newNode)
     self.calculateButton.text = "Calculate"
-    
+
 
   def writeResults(self,vtkMRMLCommandLineModuleNode):
-    """ Determines the difference between the temporary vtkMRMLCommandLineModuleNode and the "member" 
+    """ Determines the difference between the temporary vtkMRMLCommandLineModuleNode and the "member"
     vtkMRMLCommandLineModuleNode for every quantitative feature.  Creates an output text to display
     on the screen.  Deletes the temporary node.
     """
@@ -631,8 +637,8 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
 #
 
 class QuantitativeIndicesToolLogic(ScriptedLoadableModuleLogic):
-  """This class should implement all the actual 
-  computation done by your module.  The interface 
+  """This class should implement all the actual
+  computation done by your module.  The interface
   should be such that other python code can import
   this class and make use of the functionality without
   requiring an instance of the Widget
@@ -644,7 +650,7 @@ class QuantitativeIndicesToolLogic(ScriptedLoadableModuleLogic):
     ScriptedLoadableModuleLogic.__init__(self, parent)
 
   def hasImageData(self,volumeNode):
-    """This is a dummy logic method that 
+    """This is a dummy logic method that
     returns true if the passed in volume
     node has valid image data
     """
@@ -721,7 +727,7 @@ class QuantitativeIndicesToolLogic(ScriptedLoadableModuleLogic):
     Run the actual algorithm
     """
     qiModule = slicer.modules.quantitativeindicescli
-    
+
     parameters = {}
     parameters['Grayscale_Image'] = inputVolume.GetID()
     parameters['Label_Image'] = labelVolume.GetID()
@@ -770,10 +776,10 @@ class QuantitativeIndicesToolLogic(ScriptedLoadableModuleLogic):
       parameters['Peak'] = 'true'
     if(volume):
       parameters['Volume'] = 'true'
-    
-      
+
+
     newCLINode = slicer.cli.run(qiModule,cliNode,parameters,wait_for_completion=True)
-    
+
     #self.takeScreenshot('QuantitativeIndicesTool-Start','Start',-1)
 
     return newCLINode
