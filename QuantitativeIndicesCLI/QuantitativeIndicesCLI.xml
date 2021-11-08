@@ -4,7 +4,7 @@
   <title>Quantitative Indices</title>
   <description><![CDATA[Calculate quantitative indices for a specified label. Requires grayscale and label images as input.]]></description>
   <version>0.1.0</version>
-  <documentation-url>https://github.com/QIICR/Slicer-QuantitativeIndicesExt</documentation-url>
+  <documentation-url>https://github.com/QIICR/PET-IndiC</documentation-url>
   <license/>
   <contributor>Ethan Ulrich (University of Iowa), Andrey Fedorov (SPL), Markus van Tol (University of Iowa), Christian Bauer (University of Iowa), Reinhard Beichel (University of Iowa), John Buatti (University of Iowa)</contributor>
   <acknowledgements><![CDATA[This work is funded in part by Quantitative Imaging to Assess Response in Cancer Therapy Trials NIH grant U01-CA140206 and Quantitative Image Informatics for Cancer Research (QIICR) NIH grant U24 CA180918. ]]></acknowledgements>
