@@ -31,7 +31,7 @@ endif()
 
 #-----------------------------------------------------------------------------
 # Extension modules
-add_subdirectory(PET-IndiC)
+# add_subdirectory(PET-IndiC) # requires legacy Editor with got removed: https://github.com/Slicer/Slicer/commit/39283db420baf502fa99865c9d5d58d0e5295a6e
 add_subdirectory(QuantitativeIndicesCLI)
 add_subdirectory(QuantitativeIndicesTool)
 add_subdirectory(Testing)
