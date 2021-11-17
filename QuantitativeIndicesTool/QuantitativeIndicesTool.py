@@ -798,7 +798,7 @@ class QuantitativeIndicesToolTest(ScriptedLoadableModuleTest):
   def loadTestData(self):
     self.patienName = 'QIN-HEADNECK-01-0139'
     #download data and add to dicom database
-    zipFileUrl = 'http://slicer.kitware.com/midas3/download/item/257234/QIN-HEADNECK-01-0139-PET.zip'
+    zipFileUrl = 'http://github.com/QIICR/PETTumorSegmentation/releases/download/4.10.2/QIN-HEADNECK-01-0139-PET.zip'
     zipFilePath = self.tempDataDir+'/dicom.zip'
     zipFileData = self.tempDataDir+'/dicom'
     expectedNumOfFiles = 545
