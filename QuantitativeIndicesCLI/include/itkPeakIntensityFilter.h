@@ -37,7 +37,7 @@ public:
   itkNewMacro( Self );
 
   /** Dimension of the underlying image. */
-  itkStaticConstMacro(ImageDimension, unsigned int, ImageType::ImageDimension);
+  static constexpr unsigned int ImageDimension = ImageType::ImageDimension;
 
   /** Run-time type information (and related methods). */
   itkTypeMacro(PeakIntensityFilter, ProcessObject);
