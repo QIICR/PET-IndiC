@@ -173,7 +173,7 @@ PeakIntensityFilter<TImage, TLabelImage>
   m_CroppedLabelImage = LabelImageType::New();
   
   // determine extent of label
-  typedef typename itk::ImageRegionConstIteratorWithIndex<LabelImageType> LabelIteratorType;
+  using LabelIteratorType = itk::ImageRegionConstIteratorWithIndex<LabelImageType>;
   LabelIteratorType lit(inputLabel,inputLabel->GetLargestPossibleRegion());
   lit.GoToBegin();
   IndexType lowerIndex;
@@ -226,8 +226,8 @@ PeakIntensityFilter<TImage, TLabelImage>
   }
   typename ImageType::RegionType region(minIndex, size);
   
-  typedef typename itk::ExtractImageFilter<ImageType,ImageType> ImageExtractorType;
-  typedef typename itk::ExtractImageFilter<LabelImageType,LabelImageType> LabelExtractorType;
+  using ImageExtractorType = itk::ExtractImageFilter<ImageType,ImageType>;
+  using LabelExtractorType = itk::ExtractImageFilter<LabelImageType,LabelImageType>;
   typename ImageExtractorType::Pointer imageExtractor = ImageExtractorType::New();
   typename LabelExtractorType::Pointer labelExtractor = LabelExtractorType::New();
   imageExtractor->SetInput(inputImage);
@@ -294,7 +294,7 @@ PeakIntensityFilter<TImage, TLabelImage>
   octant->Allocate();
   octant->FillBuffer(0.0);
 
-  typedef typename itk::ImageRegionIteratorWithIndex<InternalImageType> KernelIteratorType;
+  using KernelIteratorType = itk::ImageRegionIteratorWithIndex<InternalImageType>;
   KernelIteratorType okit(octant, octantRegion);
   okit.GoToBegin();
   while(!okit.IsAtEnd())
@@ -538,7 +538,7 @@ PeakIntensityFilter<TImage, TLabelImage>
   PointType centerPoint;
   upsampledKernel->TransformContinuousIndexToPhysicalPoint(centerIndex, centerPoint);
 
-  typedef typename itk::ImageRegionIteratorWithIndex<InternalImageType> KernelIteratorType;
+  using KernelIteratorType = itk::ImageRegionIteratorWithIndex<InternalImageType>;
   KernelIteratorType ukit(upsampledKernel,upsampledKernelRegion);
   ukit.GoToBegin();
   while(!ukit.IsAtEnd())
@@ -644,10 +644,10 @@ PeakIntensityFilter<TImage, TLabelImage>
 //std::cout << "  CalculatePeak()\n";
   
   // convolve the kernel and evaluate at valid indices
-  typedef typename itk::ImageRegionIterator<ImageType> IteratorType;
+  using IteratorType = itk::ImageRegionIterator<ImageType>;
   IteratorType it(m_CroppedInputImage,m_CroppedInputImage->GetRequestedRegion());
 //std::cout << "Mask Count: " << m_MaskCount << std::endl;
-  typedef typename itk::ImageRegionIterator<LabelImageType> LabelIteratorType;
+  using LabelIteratorType = itk::ImageRegionIterator<LabelImageType>;
   LabelIteratorType lit(m_CroppedLabelImage,m_CroppedLabelImage->GetRequestedRegion());
   it.GoToBegin(); lit.GoToBegin(); 
   double peak = itk::NumericTraits<double>::min();
@@ -739,7 +739,7 @@ PeakIntensityFilter<TImage, TLabelImage>
 //std::cout << "  MakeKernelOperators()" << std::endl;
 
   // create the mask kernel
-  typedef typename itk::Neighborhood<LabelPixelType, ImageType::ImageDimension> LabelNeighborhoodType;
+  using LabelNeighborhoodType = itk::Neighborhood<LabelPixelType, ImageDimension>;
   LabelNeighborhoodType labelNeighborhood;
   labelNeighborhood.SetRadius(m_KernelRadius);
   
@@ -747,7 +747,7 @@ PeakIntensityFilter<TImage, TLabelImage>
   NeighborhoodType neighborhood;
   neighborhood.SetRadius(m_KernelRadius);
   
-  typedef typename itk::ImageRegionConstIterator<InternalImageType> KernelIteratorType;
+  using KernelIteratorType = itk::ImageRegionConstIterator<InternalImageType>;
   KernelIteratorType kit(this->m_KernelImage,this->m_KernelImage->GetLargestPossibleRegion());
   kit.GoToBegin();
   
@@ -781,7 +781,7 @@ PeakIntensityFilter<TImage, TLabelImage>
   labelNeighborhoodOperator->SetOperator(labelNeighborhood); 
   neighborhoodOperator->SetOperator(neighborhood);
   
-  /*typedef typename itk::ImageFileWriter<InternalImageType> WriterType;
+  /*using WriterType = itk::ImageFileWriter<InternalImageType> WriterType;
   typename WriterType::Pointer writer = WriterType::New();
   writer->SetFileName( "mask.nrrd" );
   writer->SetInput( m_KernelImage );
@@ -811,7 +811,7 @@ PeakIntensityFilter<TImage, TLabelImage>
   
   // sum up the weights of the kernel image
   double weightSum = 0.0;
-  typedef typename itk::ImageRegionConstIterator<InternalImageType> KernelIteratorType;
+  using KernelIteratorType = itk::ImageRegionConstIterator<InternalImageType>;
   KernelIteratorType kit(this->m_KernelImage,this->m_KernelImage->GetLargestPossibleRegion());
   kit.GoToBegin();
   while(!kit.IsAtEnd())

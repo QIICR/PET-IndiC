@@ -10,27 +10,27 @@ template <class TImage, class TLabelImage>
 class ITK_EXPORT PeakIntensityFilter : public ProcessObject
 {
 public:
-  /** Standard class typedefs. */
-  typedef PeakIntensityFilter      Self;
-  typedef ProcessObject            Superclass;
-  typedef SmartPointer<Self>       Pointer;
-  typedef SmartPointer<const Self> ConstPointer;
+  /** Standard class type aliases. */
+  using Self =  PeakIntensityFilter;
+  using Superclass = ProcessObject;
+  using Pointer = SmartPointer<Self>;
+  using ConstPointer = SmartPointer<const Self>;
 
-  /** Useful class typedefs*/
-  typedef TImage                           ImageType;
-  typedef typename ImageType::Pointer      ImagePointer;
-  typedef typename ImageType::ConstPointer ImageConstPointer;
-  typedef typename ImageType::PixelType    PixelType;
-  typedef typename ImageType::PointType    PointType;
-  typedef typename ImageType::SpacingType  SpacingType;
-  typedef typename ImageType::SizeType     SizeType;
-  typedef typename ImageType::IndexType    IndexType;
+  /** Useful class  type aliases*/
+  using ImageType = TImage;
+  using ImagePointer = typename ImageType::Pointer;
+  using ImageConstPointer = typename ImageType::ConstPointer;
+  using PixelType = typename ImageType::PixelType;
+  using PointType = typename ImageType::PointType;
+  using SpacingType = typename ImageType::SpacingType;
+  using SizeType = typename ImageType::SizeType;
+  using IndexType = typename ImageType::IndexType;
 
-  typedef TLabelImage                           LabelImageType;
-  typedef typename LabelImageType::Pointer      LabelImagePointer;
-  typedef typename LabelImageType::ConstPointer LabelImageConstPointer;
-  typedef typename LabelImageType::PixelType    LabelPixelType;
-  typedef typename itk::Image<double, ImageType::ImageDimension> InternalImageType;
+  using LabelImageType = TLabelImage;
+  using LabelImagePointer = typename LabelImageType::Pointer;
+  using LabelImageConstPointer = typename LabelImageType::ConstPointer;
+  using LabelPixelType = typename LabelImageType::PixelType;
+  using InternalImageType = typename itk::Image<double, ImageType::ImageDimension>;
 
   ITK_DISALLOW_COPY_AND_ASSIGN(PeakIntensityFilter);
 
@@ -83,11 +83,11 @@ protected:
   ~PeakIntensityFilter() override = default;
   void PrintSelf(std::ostream& os, Indent indent) const override;
 
-  typedef typename itk::Neighborhood<double, ImageType::ImageDimension> NeighborhoodType;
-  typedef typename itk::NeighborhoodOperatorImageFunction<ImageType, double> NeighborhoodOperatorImageFunctionType;
-  typedef typename itk::NeighborhoodOperatorImageFunction<LabelImageType, int> LabelNeighborhoodOperatorImageFunctionType;
-
   void GenerateData() override;
+
+  using NeighborhoodType = itk::Neighborhood<double, ImageDimension>;
+  using NeighborhoodOperatorImageFunctionType = itk::NeighborhoodOperatorImageFunction<ImageType, double>;
+  using LabelNeighborhoodOperatorImageFunctionType = itk::NeighborhoodOperatorImageFunction<LabelImageType, int>;
 
   void ApproximatePeakKernel();
   void MakeKernelOperators( NeighborhoodOperatorImageFunctionType* neighborhoodOperator,
@@ -119,9 +119,9 @@ private:
   /** Number of sub-samples to take along each dimension for the approximate peak kernel */
   int m_SamplingFactor{ 10 };
   /** Cropped version of the input image */
-  typename ImageType::Pointer m_CroppedInputImage;
+  ImagePointer m_CroppedInputImage;
   /** Cropped version of the label image */
-  typename LabelImageType::Pointer m_CroppedLabelImage;
+  LabelImagePointer m_CroppedLabelImage;
   /** Set to true to ignore when any part of the kernel is placed outside the label region */
   bool m_UseInteriorOnly{ true };
   /** Set to true to use an approximation of the peak kernel (follows Siemens' method) */

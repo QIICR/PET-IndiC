@@ -10,28 +10,27 @@ template <class TImage, class TLabelImage>
 class ITK_EXPORT QuantitativeIndicesComputationFilter : public ProcessObject
 {
 public:
-  /** Standard class typedefs. */
-  typedef QuantitativeIndicesComputationFilter     Self;
-  typedef ProcessObject  Superclass;
-  typedef SmartPointer<Self>       Pointer;
-  typedef SmartPointer<const Self> ConstPointer;
+  /** Standard class type aliases. */
+  using Self = QuantitativeIndicesComputationFilter;
+  using Superclass = ProcessObject;
+  using Pointer = SmartPointer<Self>;
+  using ConstPointer = SmartPointer<const Self>;
 
-  typedef TImage                  ImageType;
-  typedef typename ImageType::Pointer      ImagePointer;
-  typedef typename ImageType::ConstPointer ImageConstPointer;
-  typedef typename ImageType::PixelType     PixelType;
+  using ImageType = TImage;
+  using ImagePointer = typename ImageType::Pointer;
+  using ImageConstPointer = typename ImageType::ConstPointer;
+  using PixelType = typename ImageType::PixelType;
 
+  using LabelImageType = TLabelImage;
+  using LabelImagePointer = typename LabelImageType::Pointer;
+  using LabelImageConstPointer = typename LabelImageType::ConstPointer;
+  using LabelType = typename LabelImageType::PixelType;
 
-  typedef TLabelImage                  LabelImageType;
-  typedef typename LabelImageType::Pointer      LabelImagePointer;
-  typedef typename LabelImageType::ConstPointer LabelImageConstPointer;
-  typedef typename LabelImageType::PixelType     LabelType;
+  using PointType = typename ImageType::PointType;
 
   ITK_DISALLOW_COPY_AND_ASSIGN(QuantitativeIndicesComputationFilter);
 
   itkNewMacro( Self );
-
-  typedef typename ImageType::PointType PointType;
 
   /** Run-time type information (and related methods). */
   itkTypeMacro(QuantitativeIndicesComputationFilter, ProcessObject);
@@ -54,7 +53,7 @@ public:
   itkGetMacro(PeakValue, double);
   itkGetMacro(TotalLesionGlycolysis, double);
   itkGetMacro(SegmentedVolume, double);
-  itkGetMacro(PeakLocation, typename ImageType::PointType);
+  itkGetMacro(PeakLocation, PointType);
   itkGetMacro(MedianValue, double);
   itkGetMacro(FirstQuartileValue, double);
   itkGetMacro(ThirdQuartileValue, double);

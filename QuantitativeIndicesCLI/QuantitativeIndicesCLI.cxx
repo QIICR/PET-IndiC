@@ -28,15 +28,15 @@ using namespace std;
 int main( int argc, char * argv[] )
 {
   PARSE_ARGS;
-  typedef  float  PixelType;
+  using PixelType = float;
 	const unsigned int Dimension = 3;
 
-  typedef itk::Image< PixelType, Dimension >   ImageType;
-  typedef itk::Image< int, Dimension > LabelImageType;
+  using ImageType = itk::Image< PixelType, Dimension >;
+  using LabelImageType = itk::Image< int, Dimension >;
 
 	//image reader
-  typedef itk::ImageFileReader< ImageType >  ReaderType;
-  typedef itk::ImageFileReader< LabelImageType > LabelReaderType;
+  using ReaderType =  itk::ImageFileReader< ImageType >;
+  using LabelReaderType = itk::ImageFileReader< LabelImageType >;
 	ReaderType::Pointer ptImageReader = ReaderType::New();
 	//itk::PluginFilterWatcher watchReader(ptImage, "Read Scalar Volume", CLPProcessInformation);
 	//ptImage->ReleaseDataFlagOn();
@@ -67,9 +67,9 @@ int main( int argc, char * argv[] )
   }
   
   //resample the image to the resolution of the labelmap after padding the labelmap
-  typedef itk::ConstantPadImageFilter<LabelImageType, LabelImageType> PadderType;
+  using PadderType = itk::ConstantPadImageFilter<LabelImageType, LabelImageType>;
   PadderType::Pointer padder = PadderType::New();
-  typedef itk::ResampleImageFilter<ImageType, ImageType> ResamplerType;
+  using ResamplerType = itk::ResampleImageFilter<ImageType, ImageType>;
   ResamplerType::Pointer resampler = ResamplerType::New();
   //itk::PluginFilterWatcher watchResampler(resampler, "Resample Image", CLPProcessInformation);
   if(!sameSpace)
@@ -108,7 +108,7 @@ int main( int argc, char * argv[] )
     resampler->Update();
     ptImage = resampler->GetOutput();
   }
-  typedef itk::QuantitativeIndicesComputationFilter<ImageType,LabelImageType> QIFilterType;
+  using QIFilterType = itk::QuantitativeIndicesComputationFilter<ImageType,LabelImageType>;
 
   if(!returnCSV){
     ofstream writeFile;
@@ -358,7 +358,7 @@ int main( int argc, char * argv[] )
     csvFile.open( CSVFile.c_str() );
     
     // get the label values
-    typedef itk::ImageRegionConstIterator<LabelImageType> IteratorType;
+    using IteratorType = itk::ImageRegionConstIterator<LabelImageType>;
     IteratorType it(labelImage, labelImage->GetLargestPossibleRegion());
     it.GoToBegin();
     std::set<int> regionLabels;

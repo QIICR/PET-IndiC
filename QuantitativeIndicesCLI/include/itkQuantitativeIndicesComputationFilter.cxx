@@ -126,8 +126,8 @@ void
 QuantitativeIndicesComputationFilter<TImage, TLabelImage>
 ::CreateSegmentedValueList()
 {
-  typedef itk::ImageRegionConstIterator<ImageType>  InputIteratorType;
-  typedef itk::ImageRegionConstIterator<LabelImageType>  LabelIteratorType;
+  using InputIteratorType = itk::ImageRegionConstIterator<ImageType>;
+  using LabelIteratorType = itk::ImageRegionConstIterator<LabelImageType>;
 
   ImageConstPointer inputImage = this->GetInputImage();
   LabelImageConstPointer inputLabel = this->GetInputLabelImage();
@@ -384,8 +384,8 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
   double d_averageValue = 0.0;
   double d_segmentedVolume = 0.0;
 
-  typedef itk::ImageRegionConstIterator<ImageType>  InputIteratorType;
-  typedef itk::ImageRegionConstIterator<LabelImageType>  LabelIteratorType;
+  using InputIteratorType = itk::ImageRegionConstIterator<ImageType>;
+  using LabelIteratorType = itk::ImageRegionConstIterator<LabelImageType>;
 
   ImageConstPointer inputImage = this->GetInputImage();
   LabelImageConstPointer inputLabel = this->GetInputLabelImage();
@@ -419,12 +419,12 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
 
   //Dilate region and collect new values
   std::list<double> dilatedRegionValues;
-  typedef itk::BinaryBallStructuringElement<LabelType,3> KernelType;
+  using KernelType = itk::BinaryBallStructuringElement<LabelType,3>;
   KernelType ballElement;
   typename KernelType::SizeValueType radius = 2;
   ballElement.SetRadius(radius);
   ballElement.CreateStructuringElement();
-  typedef itk::DilateObjectMorphologyImageFilter<LabelImageType,LabelImageType,KernelType> DilaterType;
+  using DilaterType = itk::DilateObjectMorphologyImageFilter<LabelImageType,LabelImageType,KernelType>;
   typename DilaterType::Pointer dilater = DilaterType::New();
   dilater->SetObjectValue(m_CurrentLabel);
   dilater->SetKernel(ballElement);
@@ -478,7 +478,7 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
 ::CalculatePeak()
 {
 //std::cout << "CalculatePeak()\n";
-  typedef typename itk::PeakIntensityFilter<ImageType,LabelImageType> PeakFilterType;
+  using PeakFilterType = itk::PeakIntensityFilter<ImageType,LabelImageType>;
   typename PeakFilterType::Pointer peakFilter = PeakFilterType::New();
   peakFilter->SetInputImage( this->GetInputImage() );
   peakFilter->SetInputLabelImage( this->GetInputLabelImage() );
