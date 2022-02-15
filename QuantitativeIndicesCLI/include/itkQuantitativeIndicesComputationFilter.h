@@ -26,6 +26,9 @@ public:
   typedef typename LabelImageType::Pointer      LabelImagePointer;
   typedef typename LabelImageType::ConstPointer LabelImageConstPointer;
   typedef typename LabelImageType::PixelType     LabelType;
+
+  ITK_DISALLOW_COPY_AND_ASSIGN(QuantitativeIndicesComputationFilter);
+
   itkNewMacro( Self );
 
   typedef typename ImageType::PointType PointType;
@@ -82,9 +85,6 @@ protected:
   void CreateSegmentedValueList();
 
 private:
-  QuantitativeIndicesComputationFilter(const QuantitativeIndicesComputationFilter&); //purposely not implemented
-  void operator=(const QuantitativeIndicesComputationFilter&); //purposely not implemented
-
   /** The label to calculate indices for. */
   LabelType m_CurrentLabel;
 

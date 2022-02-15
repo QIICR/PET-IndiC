@@ -32,6 +32,8 @@ public:
   typedef typename LabelImageType::PixelType    LabelPixelType;
   typedef typename itk::Image<double, ImageType::ImageDimension> InternalImageType;
 
+  ITK_DISALLOW_COPY_AND_ASSIGN(PeakIntensityFilter);
+
   itkNewMacro( Self );
 
   /** Dimension of the underlying image. */
@@ -98,9 +100,6 @@ protected:
   double GetVoxelVolume( double r, double x, double y, double z, double spx, double spy, double spz );
 
 private:
-  PeakIntensityFilter(const PeakIntensityFilter&); //purposely not implemented
-  void operator=(const PeakIntensityFilter&); //purposely not implemented
-
   /** Label used to calculate indices. */
   LabelPixelType m_CurrentLabel;
   /** The peak segmented value.  */
