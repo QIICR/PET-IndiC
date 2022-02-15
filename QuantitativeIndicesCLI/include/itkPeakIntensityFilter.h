@@ -11,7 +11,7 @@ class ITK_EXPORT PeakIntensityFilter : public ProcessObject
 {
 public:
   /** Standard class type aliases. */
-  using Self =  PeakIntensityFilter;
+  using Self = PeakIntensityFilter;
   using Superclass = ProcessObject;
   using Pointer = SmartPointer<Self>;
   using ConstPointer = SmartPointer<const Self>;

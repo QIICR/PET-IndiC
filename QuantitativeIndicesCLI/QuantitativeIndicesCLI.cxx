@@ -37,10 +37,10 @@ int main( int argc, char * argv[] )
 	//image reader
   using ReaderType =  itk::ImageFileReader< ImageType >;
   using LabelReaderType = itk::ImageFileReader< LabelImageType >;
-	ReaderType::Pointer ptImageReader = ReaderType::New();
+	auto ptImageReader = ReaderType::New();
 	//itk::PluginFilterWatcher watchReader(ptImage, "Read Scalar Volume", CLPProcessInformation);
 	//ptImage->ReleaseDataFlagOn();
-  LabelReaderType::Pointer labelImageReader = LabelReaderType::New();
+  auto labelImageReader = LabelReaderType::New();
   //itk::PluginFilterWatcher watchLabelReader(labelImage, "Read Label Image", CLPProcessInformation);
   //labelImage->ReleaseDataFlagOn();
 
@@ -48,17 +48,17 @@ int main( int argc, char * argv[] )
   labelImageReader->SetFileName( Label_Image );
   ptImageReader->Update();
   labelImageReader->Update();
-  ImageType::Pointer ptImage = ptImageReader->GetOutput();
-  LabelImageType::Pointer labelImage = labelImageReader->GetOutput();
+  auto ptImage = ptImageReader->GetOutput();
+  auto labelImage = labelImageReader->GetOutput();
   
   // check if image and label occupy about the same space
   bool sameSpace = true;
-  ImageType::SpacingType ptSpacing = ptImage->GetSpacing();
-  ImageType::PointType ptOrigin = ptImage->GetOrigin();
-  ImageType::SizeType ptSize = ptImage->GetLargestPossibleRegion().GetSize();
-  LabelImageType::SpacingType labelSpacing = labelImage->GetSpacing();
-  LabelImageType::PointType labelOrigin = labelImage->GetOrigin();
-  LabelImageType::SizeType labelSize = labelImage->GetLargestPossibleRegion().GetSize();
+  auto ptSpacing = ptImage->GetSpacing();
+  auto ptOrigin = ptImage->GetOrigin();
+  auto ptSize = ptImage->GetLargestPossibleRegion().GetSize();
+  auto labelSpacing = labelImage->GetSpacing();
+  auto labelOrigin = labelImage->GetOrigin();
+  auto labelSize = labelImage->GetLargestPossibleRegion().GetSize();
   for(unsigned int i=0; i<Dimension; ++i)
   {
     if(abs(ptSpacing[i]-labelSpacing[i]) > 1e-6) sameSpace = false;
@@ -68,9 +68,9 @@ int main( int argc, char * argv[] )
   
   //resample the image to the resolution of the labelmap after padding the labelmap
   using PadderType = itk::ConstantPadImageFilter<LabelImageType, LabelImageType>;
-  PadderType::Pointer padder = PadderType::New();
+  auto padder = PadderType::New();
   using ResamplerType = itk::ResampleImageFilter<ImageType, ImageType>;
-  ResamplerType::Pointer resampler = ResamplerType::New();
+  auto resampler = ResamplerType::New();
   //itk::PluginFilterWatcher watchResampler(resampler, "Resample Image", CLPProcessInformation);
   if(!sameSpace)
   {
@@ -84,8 +84,8 @@ int main( int argc, char * argv[] )
     labelImage = padder->GetOutput();
     //labelImage->DisconnectPipeline();
     // reset non-zero index
-    LabelImageType::RegionType r = labelImage->GetLargestPossibleRegion();
-    LabelImageType::IndexType idx = r.GetIndex();
+    auto r = labelImage->GetLargestPossibleRegion();
+    auto idx = r.GetIndex();
     for( unsigned int i = 0; i < LabelImageType::ImageDimension; ++i )
     {
       if ( idx[i] != 0 )
@@ -137,7 +137,7 @@ int main( int argc, char * argv[] )
     if(!SAM_Background){writeFile << "SAM_Background_s = --" << endl;};
     if(!Peak){writeFile << "Peak_s = --" << endl;};
 
-    QIFilterType::Pointer qiCompute = QIFilterType::New();
+    auto qiCompute = QIFilterType::New();
     //itk::PluginFilterWatcher watchFilter(qiCompute, "Quantitative Indices Computation", CLPProcessInformation);
     qiCompute->SetInputImage(ptImage);
     qiCompute->SetInputLabelImage(labelImage);

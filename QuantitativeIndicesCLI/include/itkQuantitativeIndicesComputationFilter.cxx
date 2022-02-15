@@ -129,8 +129,8 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
   using InputIteratorType = itk::ImageRegionConstIterator<ImageType>;
   using LabelIteratorType = itk::ImageRegionConstIterator<LabelImageType>;
 
-  ImageConstPointer inputImage = this->GetInputImage();
-  LabelImageConstPointer inputLabel = this->GetInputLabelImage();
+  auto inputImage = this->GetInputImage();
+  auto inputLabel = this->GetInputLabelImage();
   
   double d_maximumValue = itk::NumericTraits<double>::min();
   double d_minimumValue = itk::NumericTraits<double>::max();
@@ -201,8 +201,8 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
   double sum3 = 0.0;
   double sum4 = 0.0;
 
-  ImageConstPointer inputImage = this->GetInputImage();
-  typename ImageType::SpacingType spacing = inputImage->GetSpacing();
+  auto inputImage = this->GetInputImage();
+  auto spacing = inputImage->GetSpacing();
 
   //Need to store all segmented values for some computations
   if(!m_ListGenerated)
@@ -387,10 +387,10 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
   using InputIteratorType = itk::ImageRegionConstIterator<ImageType>;
   using LabelIteratorType = itk::ImageRegionConstIterator<LabelImageType>;
 
-  ImageConstPointer inputImage = this->GetInputImage();
-  LabelImageConstPointer inputLabel = this->GetInputLabelImage();
+  auto inputImage = this->GetInputImage();
+  auto inputLabel = this->GetInputLabelImage();
 
-  typename ImageType::SpacingType spacing = inputImage->GetSpacing();
+  auto spacing = inputImage->GetSpacing();
   double voxelSize = spacing[0] * spacing[1] * spacing[2];
 
   InputIteratorType inIt(inputImage, inputImage->GetLargestPossibleRegion());
@@ -425,7 +425,7 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
   ballElement.SetRadius(radius);
   ballElement.CreateStructuringElement();
   using DilaterType = itk::DilateObjectMorphologyImageFilter<LabelImageType,LabelImageType,KernelType>;
-  typename DilaterType::Pointer dilater = DilaterType::New();
+  auto dilater = DilaterType::New();
   dilater->SetObjectValue(m_CurrentLabel);
   dilater->SetKernel(ballElement);
   dilater->SetInput(inputLabel);
@@ -479,7 +479,7 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
 {
 //std::cout << "CalculatePeak()\n";
   using PeakFilterType = itk::PeakIntensityFilter<ImageType,LabelImageType>;
-  typename PeakFilterType::Pointer peakFilter = PeakFilterType::New();
+  auto peakFilter = PeakFilterType::New();
   peakFilter->SetInputImage( this->GetInputImage() );
   peakFilter->SetInputLabelImage( this->GetInputLabelImage() );
   peakFilter->SetCurrentLabel( m_CurrentLabel );

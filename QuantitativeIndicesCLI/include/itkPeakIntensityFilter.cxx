@@ -190,7 +190,7 @@ PeakIntensityFilter<TImage, TLabelImage>
     if(lit.Get() == m_CurrentLabel)
     {
       labelFound = true;
-      typename LabelImageType::IndexType idx = lit.GetIndex();
+      auto idx = lit.GetIndex();
       for(unsigned int i=0; i<ImageDimension; ++i)
       {
         if(idx[i]<lowerIndex[i]) lowerIndex[i]=idx[i];
@@ -228,8 +228,8 @@ PeakIntensityFilter<TImage, TLabelImage>
   
   using ImageExtractorType = itk::ExtractImageFilter<ImageType,ImageType>;
   using LabelExtractorType = itk::ExtractImageFilter<LabelImageType,LabelImageType>;
-  typename ImageExtractorType::Pointer imageExtractor = ImageExtractorType::New();
-  typename LabelExtractorType::Pointer labelExtractor = LabelExtractorType::New();
+  auto imageExtractor = ImageExtractorType::New();
+  auto labelExtractor = LabelExtractorType::New();
   imageExtractor->SetInput(inputImage);
   labelExtractor->SetInput(inputLabel);
   imageExtractor->SetExtractionRegion(region);
@@ -259,9 +259,9 @@ PeakIntensityFilter<TImage, TLabelImage>
 ::BuildPeakKernel()
 {
 //std::cout << "  BuildPeakKernel()\n";
-  ImageConstPointer inputImage = this->GetInputImage();
-  LabelImageConstPointer labelImage = this->GetInputLabelImage();
-  SpacingType voxelSize = inputImage->GetSpacing();
+  auto inputImage = this->GetInputImage();
+  auto labelImage = this->GetInputLabelImage();
+  auto voxelSize = inputImage->GetSpacing();
 
   // build the full-resolution image of the kernel
   SizeType kernelSize;
@@ -281,7 +281,7 @@ PeakIntensityFilter<TImage, TLabelImage>
   m_KernelImage->Allocate();
   m_KernelImage->FillBuffer(0.0);
 
-  typename InternalImageType::Pointer octant = InternalImageType::New();
+  auto octant = InternalImageType::New();
   octant->SetOrigin(origin);
   SizeType octantSize;
   for(unsigned int i=0; i<ImageDimension; ++i)
@@ -299,7 +299,7 @@ PeakIntensityFilter<TImage, TLabelImage>
   okit.GoToBegin();
   while(!okit.IsAtEnd())
   {
-    IndexType currentIndex = okit.GetIndex();
+    auto currentIndex = okit.GetIndex();
     okit.Set( this->GetVoxelVolume(m_SphereRadius[0],currentIndex[0]*voxelSize[0],currentIndex[1]*voxelSize[1],
 					currentIndex[2]*voxelSize[2],voxelSize[0],voxelSize[1],voxelSize[2]) );
     ++okit;
@@ -314,7 +314,7 @@ PeakIntensityFilter<TImage, TLabelImage>
 
   while(!kit.IsAtEnd())
   {
-    IndexType transIndex = kit.GetIndex();
+    auto transIndex = kit.GetIndex();
 
     if ( transIndex[0] < x )
     {
@@ -507,9 +507,9 @@ PeakIntensityFilter<TImage, TLabelImage>
 ::ApproximatePeakKernel()
 {
 //std::cout << "  ApproximatePeakKernel()\n";
-  ImageConstPointer inputImage = this->GetInputImage();
-  LabelImageConstPointer labelImage = this->GetInputLabelImage();
-  SpacingType voxelSize = inputImage->GetSpacing();
+  auto inputImage = this->GetInputImage();
+  auto labelImage = this->GetInputLabelImage();
+  auto voxelSize = inputImage->GetSpacing();
   
   // build a higher-resolution image of the kernel
   SpacingType upsampledKernelSpacing;
@@ -524,7 +524,7 @@ PeakIntensityFilter<TImage, TLabelImage>
   PointType origin; origin.Fill(0);
   IndexType startIndex; startIndex.Fill(0);
   typename InternalImageType::RegionType upsampledKernelRegion(startIndex, upsampledKernelSize);
-  typename InternalImageType::Pointer upsampledKernel = InternalImageType::New();
+  auto upsampledKernel = InternalImageType::New();
   upsampledKernel->SetOrigin(origin);
   upsampledKernel->SetRegions(upsampledKernelRegion);
   upsampledKernel->SetSpacing(upsampledKernelSpacing);
@@ -543,7 +543,7 @@ PeakIntensityFilter<TImage, TLabelImage>
   ukit.GoToBegin();
   while(!ukit.IsAtEnd())
   {
-    IndexType currentIndex = ukit.GetIndex();
+    auto currentIndex = ukit.GetIndex();
     PointType currentPoint;
     upsampledKernel->TransformIndexToPhysicalPoint(currentIndex, currentPoint);
     double r = 0.0;
@@ -635,9 +635,9 @@ PeakIntensityFilter<TImage, TLabelImage>
   }
   
   // create the kernel operators
-  typename NeighborhoodOperatorImageFunctionType::Pointer peakOperator = NeighborhoodOperatorImageFunctionType::New();
+  auto peakOperator = NeighborhoodOperatorImageFunctionType::New();
   peakOperator->SetInputImage(this->GetInputImage());
-  typename LabelNeighborhoodOperatorImageFunctionType::Pointer maskOperator = LabelNeighborhoodOperatorImageFunctionType::New();
+  auto maskOperator = LabelNeighborhoodOperatorImageFunctionType::New();
   maskOperator->SetInputImage(this->GetInputLabelImage());
   this->MakeKernelOperators(peakOperator,maskOperator);
   
@@ -654,8 +654,8 @@ PeakIntensityFilter<TImage, TLabelImage>
   double max_center_val = itk::NumericTraits<double>::min();
   bool validPlacementFound = false;
   IndexType peakIndex;
-  SpacingType spacing = this->GetInputImage()->GetSpacing();
-  SizeType imageSize = this->GetInputImage()->GetLargestPossibleRegion().GetSize();
+  auto spacing = this->GetInputImage()->GetSpacing();
+  auto imageSize = this->GetInputImage()->GetLargestPossibleRegion().GetSize();
   while(!it.IsAtEnd())
   {
     if(lit.Get() == m_CurrentLabel)
@@ -751,8 +751,8 @@ PeakIntensityFilter<TImage, TLabelImage>
   KernelIteratorType kit(this->m_KernelImage,this->m_KernelImage->GetLargestPossibleRegion());
   kit.GoToBegin();
   
-  typename NeighborhoodType::Iterator nit = neighborhood.Begin();
-  typename LabelNeighborhoodType::Iterator lnit = labelNeighborhood.Begin();
+  auto nit = neighborhood.Begin();
+  auto lnit = labelNeighborhood.Begin();
   double kernelSum = 0.0;
   m_MaskCount = 0;
   while(!kit.IsAtEnd())
@@ -802,7 +802,7 @@ PeakIntensityFilter<TImage, TLabelImage>
 ::GetKernelVolume()
 {
   // determine voxel volume
-  typename InternalImageType::SpacingType spacing = this->m_KernelImage->GetSpacing();
+  auto spacing = this->m_KernelImage->GetSpacing();
   double voxelVolume = 1.0;
   for(unsigned int i=0; i<ImageDimension; ++i)
   {
