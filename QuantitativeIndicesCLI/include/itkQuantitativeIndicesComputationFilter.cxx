@@ -30,7 +30,6 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
 {
   this->ProcessObject::SetNumberOfRequiredInputs(2);
   this->ProcessObject::SetNumberOfRequiredOutputs(0);
-  m_ListGenerated = false;
 }
 
 //----------------------------------------------------------------------------

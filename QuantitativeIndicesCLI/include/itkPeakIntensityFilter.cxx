@@ -24,9 +24,6 @@ PeakIntensityFilter<TImage, TLabelImage>
   this->ProcessObject::SetNumberOfRequiredOutputs(0);
   double r = std::pow(1000*0.75/PI,1.0/3.0);
   m_SphereRadius.Fill(r); // approx. 1cc sphere
-  m_UseInteriorOnly = true;
-  m_UseApproximateKernel = false;
-  m_SamplingFactor = 10;
 }
 
 //----------------------------------------------------------------------------

@@ -136,7 +136,7 @@ private:
   double m_SAMBackground;
 
   /** Flag indicating if list has been generated */
-  bool m_ListGenerated;
+  bool m_ListGenerated{ false };
   /** List of values in region of interest */
   std::vector<double> m_SegmentedValues;
 };

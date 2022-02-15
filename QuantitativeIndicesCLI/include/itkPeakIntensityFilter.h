@@ -117,15 +117,15 @@ private:
   /** Integer radius of the kernel */
   SizeType m_KernelRadius;
   /** Number of sub-samples to take along each dimension for the approximate peak kernel */
-  int m_SamplingFactor;
+  int m_SamplingFactor{ 10 };
   /** Cropped version of the input image */
   typename ImageType::Pointer m_CroppedInputImage;
   /** Cropped version of the label image */
   typename LabelImageType::Pointer m_CroppedLabelImage;
   /** Set to true to ignore when any part of the kernel is placed outside the label region */
-  bool m_UseInteriorOnly;
+  bool m_UseInteriorOnly{ true };
   /** Set to true to use an approximation of the peak kernel (follows Siemens' method) */
-  bool m_UseApproximateKernel;
+  bool m_UseApproximateKernel{ false };
   /** Image containing the coefficents of the peak kernel */
   typename InternalImageType::Pointer m_KernelImage;
 
