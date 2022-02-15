@@ -78,8 +78,8 @@ public:
 
 protected:
   PeakIntensityFilter();
-  ~PeakIntensityFilter();
-  virtual void PrintSelf(std::ostream& os, Indent indent) const override;
+  ~PeakIntensityFilter() override = default;
+  void PrintSelf(std::ostream& os, Indent indent) const override;
 
   typedef typename itk::Neighborhood<double, ImageType::ImageDimension> NeighborhoodType;
   typedef typename itk::NeighborhoodOperatorImageFunction<ImageType, double> NeighborhoodOperatorImageFunctionType;

@@ -34,13 +34,6 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
 }
 
 //----------------------------------------------------------------------------
-template <class TImage, class TLabelImage>
-QuantitativeIndicesComputationFilter<TImage, TLabelImage>
-::~QuantitativeIndicesComputationFilter()
-{}
-
-
-//----------------------------------------------------------------------------
 /*
 SetInputImage
 Sets the input volume, expected to be PET data.

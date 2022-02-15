@@ -75,12 +75,11 @@ public:
 
 protected:
   QuantitativeIndicesComputationFilter();
-  ~QuantitativeIndicesComputationFilter();
-  virtual void PrintSelf(std::ostream& os, Indent indent) const override;
+  ~QuantitativeIndicesComputationFilter() override = default;
+  void PrintSelf(std::ostream& os, Indent indent) const override;
 
   void GenerateData() override;
   void CreateSegmentedValueList();
-
 
 private:
   QuantitativeIndicesComputationFilter(const QuantitativeIndicesComputationFilter&); //purposely not implemented

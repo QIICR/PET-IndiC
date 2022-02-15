@@ -30,13 +30,6 @@ PeakIntensityFilter<TImage, TLabelImage>
 }
 
 //----------------------------------------------------------------------------
-template <class TImage, class TLabelImage>
-PeakIntensityFilter<TImage, TLabelImage>
-::~PeakIntensityFilter()
-{}
-
-
-//----------------------------------------------------------------------------
 /*
 SetSphereVolume
 Sets the volume of the sphere and updates the radii.
