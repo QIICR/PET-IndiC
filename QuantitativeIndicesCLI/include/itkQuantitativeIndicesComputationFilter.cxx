@@ -227,33 +227,22 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
     return;
   }
 
-  std::vector<double>::const_iterator listIt = m_SegmentedValues.begin();
-  while (listIt != m_SegmentedValues.end())
-  {
-    double curValue = *listIt;
-    d_segmentedVolume += 1;
-    d_rmsValue += curValue*curValue;
-    listIt++;
-  }
   //Find the distribution within the range
   binSize = (m_MaximumValue-m_MinimumValue)*0.25;
-  listIt = m_SegmentedValues.begin();
-  while (listIt != m_SegmentedValues.end())
+  for(const auto& curValue :  m_SegmentedValues)
   {
-    double curValue = *listIt;
+    d_rmsValue += curValue*curValue;
     if(curValue >= m_MinimumValue && curValue <= (m_MinimumValue + binSize)){d_q1++; sum1+=curValue;};
     if(curValue > (m_MinimumValue+binSize) && curValue <= (m_MinimumValue+2*binSize)){d_q2++; sum2+=curValue;};
     if(curValue > (m_MinimumValue+2*binSize) && curValue <= (m_MinimumValue+3*binSize)){d_q3++; sum3+=curValue;};
     if(curValue > (m_MinimumValue+3*binSize) && curValue <= (m_MinimumValue+4*binSize)){d_q4++; sum4+=curValue;}; 
-    listIt++;
   }
 
-  double voxelCount = d_segmentedVolume;
+  double voxelCount = m_SegmentedValues.size();
   double voxelVolume = (spacing[0] * spacing[1] * spacing[2]);
   d_averageValue = (sum1+sum2+sum3+sum4) / voxelCount;
   d_rmsValue = std::sqrt(d_rmsValue / voxelCount);
-  d_segmentedVolume *= voxelVolume;
-  //d_totalLesionGly = (sum1+sum2+sum3+sum4)*voxelVolume;
+  d_segmentedVolume = voxelCount*voxelVolume;
   d_gly1 = sum1*voxelVolume;
   d_gly2 = sum2*voxelVolume;
   d_gly3 = sum3*voxelVolume;
@@ -264,12 +253,8 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
   d_q3 = d_q3/voxelCount;
   d_q4 = d_q4/voxelCount;
 
-	listIt = m_SegmentedValues.begin();
-	while (listIt != m_SegmentedValues.end())
-	{
-		d_variance += ((*listIt)-d_averageValue) * ((*listIt)-d_averageValue);
-		listIt++;
-	}
+  for(const auto& curValue :  m_SegmentedValues)
+		d_variance += (curValue-d_averageValue) * (curValue-d_averageValue);
 
   d_variance /= (voxelCount);
 
@@ -406,13 +391,10 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
     m_SAMBackground = std::numeric_limits<double>::quiet_NaN();
     return;
   }
-  std::vector<double>::const_iterator listIt = m_SegmentedValues.begin();
-  while (listIt != m_SegmentedValues.end())
+  for(const auto& curValue :  m_SegmentedValues)
   {
-    double curValue = *listIt;
     d_averageValue += curValue;
     d_segmentedVolume += 1;
-    listIt++;
   }
 
   d_averageValue /= d_segmentedVolume;
@@ -445,12 +427,8 @@ QuantitativeIndicesComputationFilter<TImage, TLabelImage>
     }
 
   double dilatedSize = (double) dilatedRegionValues.size();
-	std::list<double>::iterator dlistIt = dilatedRegionValues.begin();
-  while(dlistIt != dilatedRegionValues.end())
-    {
-      d_SAM += *dlistIt;
-      dlistIt++;
-    }
+  for(const auto& curValue :  dilatedRegionValues)
+    d_SAM += curValue;
   d_SAM = d_SAM / dilatedSize;
   d_SAMBackground = (d_SAM*dilatedSize-d_averageValue*d_segmentedVolume)/(dilatedSize-d_segmentedVolume);
   d_SAM = (d_averageValue-d_SAMBackground)*d_segmentedVolume*voxelSize;
