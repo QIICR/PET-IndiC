@@ -160,8 +160,7 @@ class PETVolumeSegmentStatisticsPluginSelfTestTest(ScriptedLoadableModuleTest):
         #petNode = slicer.mrmlScene.GetFirstNodeByClass('vtkMRMLScalarVolumeNode')
     
         self.delayDisplay('Creating segmentations')
-        segmentationNode = slicer.vtkMRMLSegmentationNode()
-        slicer.mrmlScene.AddNode(segmentationNode)
+        segmentationNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLSegmentationNode')
         segmentationNode.CreateDefaultDisplayNodes()
         segmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(petNode)
     
@@ -172,7 +171,6 @@ class PETVolumeSegmentStatisticsPluginSelfTestTest(ScriptedLoadableModuleTest):
           sphereSource.SetRadius(segmentGeometry[0])
           sphereSource.SetCenter(segmentGeometry[1], segmentGeometry[2], segmentGeometry[3])
           sphereSource.Update()
-          segment = vtkSegmentationCore.vtkSegment()
           uniqueSegmentID = segmentationNode.GetSegmentation().GenerateUniqueSegmentID("Test")
           segmentationNode.AddSegmentFromClosedSurfaceRepresentation(sphereSource.GetOutput(), uniqueSegmentID)
 
@@ -181,8 +179,7 @@ class PETVolumeSegmentStatisticsPluginSelfTestTest(ScriptedLoadableModuleTest):
         segStatLogic.getParameterNode().SetParameter("ScalarVolume", petNode.GetID())
         segStatLogic.computeStatistics()
         stats = segStatLogic.getStatistics()
-        resultsTableNode = slicer.vtkMRMLTableNode()
-        slicer.mrmlScene.AddNode(resultsTableNode)
+        resultsTableNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLTableNode')
         segStatLogic.exportToTable(resultsTableNode)
         segStatLogic.showTable(resultsTableNode)
 

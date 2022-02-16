@@ -854,8 +854,7 @@ class QuantitativeIndicesToolTest(ScriptedLoadableModuleTest):
         widget.grayscaleSelector.setCurrentNode(petNode)
 
         self.delayDisplay('Creating segmentations')
-        segmentationNode = slicer.vtkMRMLSegmentationNode()
-        slicer.mrmlScene.AddNode(segmentationNode)
+        segmentationNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLSegmentationNode')
         segmentationNode.CreateDefaultDisplayNodes()
         segmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(petNode)
 
@@ -871,8 +870,7 @@ class QuantitativeIndicesToolTest(ScriptedLoadableModuleTest):
           uniqueSegmentID = segmentationNode.GetSegmentation().GenerateUniqueSegmentID("Test")
           segmentationNode.AddSegmentFromClosedSurfaceRepresentation(sphereSource.GetOutput(), uniqueSegmentID)
 
-        labelNode = slicer.vtkMRMLLabelMapVolumeNode()
-        slicer.mrmlScene.AddNode(labelNode)
+        labelNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLLabelMapVolumeNode')
         labelNode.CreateDefaultDisplayNodes()
         slicer.modules.segmentations.logic().ExportAllSegmentsToLabelmapNode(segmentationNode, labelNode)
         widget.labelSelector.setCurrentNode(labelNode)
