@@ -332,25 +332,29 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.calculateButton.toolTip = "Calculate quantitative features."
     self.calculateButton.enabled = False
     self.featuresFormLayout.addRow(self.calculateButton)
-
+    
     #
     # Results Frame
     #
     self.resultsCollapsibleButton = ctk.ctkCollapsibleButton()
     self.resultsCollapsibleButton.text = "Results"
     self.layout.addWidget(self.resultsCollapsibleButton)
-    self.resultsFormLayout = qt.QFormLayout(self.resultsCollapsibleButton)
+    self.resultsFormLayout = qt.QVBoxLayout(self.resultsCollapsibleButton)
 
     self.resultsFrame = qt.QFrame(self.resultsCollapsibleButton)
-    self.resultsFrame.setLayout(qt.QHBoxLayout())
+    self.resultsFrame.setLayout(qt.QVBoxLayout())
     self.resultsFrame.layout().setSpacing(0)
     self.resultsFrame.layout().setMargin(0)
     self.resultsFormLayout.addWidget(self.resultsFrame)
-    self.resultsFrameLabel = qt.QLabel('', self.resultsFrame)
-    self.resultsFrame.layout().addWidget(self.resultsFrameLabel)
+    self.tableView = slicer.qMRMLTableView(self.resultsFrame)
+    self.tableView.setMinimumHeight(150)
+    self.tableView.setSelectionMode(qt.QTableView.ContiguousSelection)
+    self.resultsFrame.layout().addWidget(self.tableView)
+    
+    self.tableNode = None
 
     # Add vertical spacer
-    self.layout.addStretch(1)
+    # self.layout.addStretch(1)
 
     # connections
     self.calculateButton.connect('clicked(bool)', self.onCalculateButton)
@@ -362,6 +366,15 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.selectAllButton.connect('clicked(bool)',self.onSelectAllButton)
     self.deselectAllButton.connect('clicked(bool)',self.onDeselectAllButton)
 
+  def setMeasurementsTable(self, table):
+    if table:
+      self.tableNode = table
+      self.tableNode.SetLocked(True)
+      self.tableView.setMRMLTableNode(self.tableNode)
+    else:
+      if self.tableNode:
+        self.tableNode.RemoveAllColumns()
+      self.tableView.setMRMLTableNode(self.tableNode if self.tableNode else None)
 
   def onGrayscaleSelect(self, node):
     """ Set the grayscale volume node.  Check if other buttons can be enabled
@@ -574,17 +587,24 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
 
     self.writeResults(newNode)
     self.calculateButton.text = "Calculate"
-
-
+   
   def writeResults(self,vtkMRMLCommandLineModuleNode):
     """ Determines the difference between the temporary vtkMRMLCommandLineModuleNode and the "member"
-    vtkMRMLCommandLineModuleNode for every quantitative feature.  Creates an output text to display
+    vtkMRMLCommandLineModuleNode for every quantitative feature.  Creates an output table to display
     on the screen.  Deletes the temporary node.
     """
+    if not self.tableNode:
+      self.tableNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLTableNode','Quantitative Indices Table')
+    table = self.tableNode 
+    
+    tableWasModified = table.StartModify()
+    table.RemoveAllColumns()
+    table.AddColumn().SetName("Measurements")
+    table.AddColumn().SetName("Values")
+    
     newNode = vtkMRMLCommandLineModuleNode
     labelValue = int(self.labelValueSelector.value)
     oldNode = self.cliNodes[labelValue]
-    resultText = ''
     for i in range(24):
       newResult = newNode.GetParameterDefault(3,i)
       if (newResult != '--'):
@@ -594,12 +614,18 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
           flagName = oldNode.GetParameterName(2,i)
           oldNode.SetParameterAsString(feature,newResult)
           oldNode.SetParameterAsString(flagName,'true')
-        feature = feature.replace('_s',':\t')
+        feature = feature.replace('_s','')
         feature = feature.replace('_',' ')
-        if len(feature) < 14:
-          feature = feature + '\t'
-        resultText = resultText + feature + newResult + '\n'
-    self.resultsFrameLabel.setText(resultText)
+        if (feature==""): continue
+        row = table.AddEmptyRow()
+        table.GetTable().GetColumn(0).SetValue(row, feature)
+        table.GetTable().GetColumn(1).SetValue(row, newResult)
+
+    table.SetUseColumnNameAsColumnHeader(True)
+    table.Modified()
+    table.EndModify(tableWasModified)
+    self.setMeasurementsTable(table)
+
     # TODO find a better way to retrieve the software revision
     # use slicer.modules.QuantitativeIndicesToolWidget.software_version to retrieve
     self.software_version = newNode.GetParameterDefault(0,0)
@@ -885,7 +911,7 @@ class QuantitativeIndicesToolTest(ScriptedLoadableModuleTest):
           'SAM':199.284,\
           'Q1 Distribution':78.7157,\
           'TLG':356.782}
-        self._verifyResults(widget.resultsFrameLabel.text, values)
+        self._verifyResults(widget.tableNode, values)
 
         self.delayDisplay('Calculating measurements for label 2')
         widget.labelValueSelector.setValue(2)
@@ -896,7 +922,7 @@ class QuantitativeIndicesToolTest(ScriptedLoadableModuleTest):
           'SAM':206.139,\
           'Q1 Distribution':83.9865,\
           'TLG':337.106}
-        self._verifyResults(widget.resultsFrameLabel.text, values)
+        self._verifyResults(widget.tableNode, values)
 
         self.delayDisplay('Test passed!')
 
@@ -904,15 +930,15 @@ class QuantitativeIndicesToolTest(ScriptedLoadableModuleTest):
       import traceback
       traceback.print_exc()
       self.delayDisplay('Test caused exception!\n' + str(e))
-
-  def _verifyResults(self, resultsString, referenceMeasurements={}):
-    assert(resultsString!=None)
+  
+  def _verifyResults(self, resultsTable, referenceMeasurements={}):
+    assert(resultsTable!=None)
     matchedMeasurements = set()
-    for line in resultsString.split('\n'):
-      items = line.split(':')
-      if len(items)<2: continue
-      index,value = items[0], float(items[1].strip())
+    for i in range(resultsTable.GetNumberOfRows()):
+      index = resultsTable.GetCellText(i,0)
+      value = resultsTable.GetCellText(i,1)
       if index in referenceMeasurements:
         matchedMeasurements.add(index)
         self.assertTrue(abs(float(value)-referenceMeasurements[index])<0.01) # account for potential rounding differences
     self.assertTrue(len(matchedMeasurements)==len(referenceMeasurements))
+    
