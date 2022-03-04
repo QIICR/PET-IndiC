@@ -443,7 +443,6 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
       self.parameterSetButton.enabled = bool(self.grayscaleNode) and bool(self.labelNode)
       self.calculateButton.enabled = bool(self.grayscaleNode) and bool(self.labelNode) and bool(self.cliNodes)
       self.parameterFrameLabel.setText(' (none generated) ')
-      self.resultsFrameLabel.setText('')
     else:
       return
 
@@ -595,12 +594,16 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     """
     if not self.tableNode:
       self.tableNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLTableNode','Quantitative Indices Table')
+
+    imageUnits = self.logic.getImageUnits(self.grayscaleNode)
+
     table = self.tableNode 
     
     tableWasModified = table.StartModify()
     table.RemoveAllColumns()
-    table.AddColumn().SetName("Measurements")
-    table.AddColumn().SetName("Values")
+    table.AddColumn().SetName("Index")
+    table.AddColumn().SetName("Value")
+    table.AddColumn().SetName("Units")
     
     newNode = vtkMRMLCommandLineModuleNode
     labelValue = int(self.labelValueSelector.value)
@@ -617,9 +620,11 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
         feature = feature.replace('_s','')
         feature = feature.replace('_',' ')
         if (feature==""): continue
+        units = self.logic.getUnitsForIndex(imageUnits, feature)
         row = table.AddEmptyRow()
         table.GetTable().GetColumn(0).SetValue(row, feature)
         table.GetTable().GetColumn(1).SetValue(row, newResult)
+        table.GetTable().GetColumn(2).SetValue(row, units)
 
     table.SetUseColumnNameAsColumnHeader(True)
     table.Modified()
@@ -782,6 +787,37 @@ class QuantitativeIndicesToolLogic(ScriptedLoadableModuleLogic):
     #self.takeScreenshot('QuantitativeIndicesTool-Start','Start',-1)
 
     return newCLINode
+  
+  def getImageUnits(self, imageNode):
+    """Search for units in the image node attributes or voxel value units"""
+    units = None
+    if imageNode.GetAttribute('DICOM.MeasurementUnitsCodeValue'):
+      units = imageNode.GetAttribute('DICOM.MeasurementUnitsCodeValue')
+    elif imageNode.GetVoxelValueUnits():
+      units =  imageNode.GetVoxelValueUnits().GetCodeValue()
+    return units
+  
+  def getUnitsForIndex(self, imageUnits, indexName):
+    """Interpret units """
+    if imageUnits==None: imageUnits='{-}g/ml'
+    if imageUnits not in ['{-}g/ml','{SUVbw}g/ml','{SUVlbm}g/ml','{SUVibw}g/ml']: # TODO '{SUVbsa}cm2/ml'
+      #print('WARNING: could not interpret units for '+ indexName +'. Units: '+ imageUnits)
+      return '-'
+    else:
+      units = (imageUnits.split('{')[1]).split('}')[0]
+      if indexName in ['Mean','Std Deviation','Min','Max','Peak','First Quartile','Median','Third Quartile','Upper Adjacent','RMS','SAM Background']:
+        return units
+      elif indexName=='Volume':
+        return 'ml'
+      #elif indexName=='Variance':
+        #return units + '^2'
+      elif indexName in ['TLG','Glycolysis Q1','Glycolysis Q2','Glycolysis Q3','Glycolysis Q4','SAM']:
+        return (units + '*ml') if units!='-' else '-'
+      elif indexName in ['Q1 Distribution','Q2 Distribution','Q3 Distribution','Q4 Distribution']:
+        return '%'
+      else:
+        #print('WARNING: could not interpret units for '+ indexName +'. Units: '+ imageUnits)
+        return '-'
 
 from DICOMLib import DICOMUtils
 class QuantitativeIndicesToolTest(ScriptedLoadableModuleTest):
