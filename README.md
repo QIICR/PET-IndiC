@@ -1,6 +1,10 @@
 PET-IndiC Extension
 =====================================
 
+3D Slicer Extension for calculation of PET related quantitative indices.
+
+Documentation: https://www.slicer.org/wiki/Documentation/Nightly/Extensions/PET-IndiC
+
 Acknowledgements
 --------
 
