@@ -82,3 +82,65 @@ per the canonical Slicer `SegmentEditor.py` pattern.
 4. Switch segments → recalculation triggered
 5. W/L presets → unchanged behavior
 6. Run self-test: `slicer.modules.petindic.widgetRepresentation().self().onReloadAndTest()`
+
+## API Verification with slicer-skill
+
+The migration was developed with the help of
+[slicer-skill](https://github.com/af61/slicer-skill), an agent skill that
+provides local clones of the Slicer source tree, the Extensions Index, and
+Slicer Discourse archives for offline API verification.
+
+### Setup
+
+```bash
+~/.claude/skills/slicer-skill/setup.sh   # clones Slicer source → slicer-source/
+```
+
+### Key source files consulted
+
+| Slicer source file | What it confirmed |
+|--------------------|-------------------|
+| `Modules/Scripted/SegmentEditor/SegmentEditor.py` | Canonical widget setup: `setMRMLSegmentEditorNode()` **before** `setMRMLScene()` |
+| `Modules/Loadable/Segmentations/Widgets/qMRMLSegmentEditorWidget.h` | C++ header — full method signatures (`setSourceVolumeNode`, `setSegmentationNode`, `installKeyboardShortcuts`, etc.) |
+| `Modules/Loadable/Segmentations/EditorEffects/Python/SegmentEditorEffects/SegmentEditorThresholdEffect.py` | Threshold parameter names: `MinimumThreshold`, `MaximumThreshold` |
+| `Docs/developer_guide/modules/segmenteditor.md` | Effect parameter documentation |
+| `Docs/developer_guide/script_repository/segmentations.md` | Segment export and manipulation examples |
+| `Modules/Loadable/Segmentations/Testing/Python/SegmentationsModuleTest2.py` | Test pattern: `effect.self().onApply()` |
+| `Utilities/Templates/Modules/ScriptedSegmentEditorEffect/SegmentEditorTemplateKey.py` | Confirmed `effect.self().onApply()` convention |
+
+### Corrections made from source verification
+
+- **Initialization order**: The initial plan called `setMRMLScene()` before
+  `setMRMLSegmentEditorNode()`. Reading `SegmentEditor.py` showed the correct
+  order is parameter node first, then scene.
+- **Method name**: Confirmed `setSourceVolumeNode()` (not the deprecated
+  `setMasterVolumeNode()`).
+- **Threshold parameters**: Confirmed exact strings `MinimumThreshold` /
+  `MaximumThreshold` (not `ThresholdMin` etc.).
+- **Apply pattern**: Confirmed `effect.self().onApply()` (not
+  `effect.apply()` or similar).
+
+## Interactive Testing with MCP
+
+The migrated module was tested interactively inside a running Slicer instance
+using the MCP (Model Context Protocol) server bundled with slicer-skill at
+`~/.claude/skills/slicer-skill/slicer-mcp-server.py`.
+
+### How it works
+
+1. Paste the MCP server script into Slicer's Python console — starts an HTTP
+   JSON-RPC endpoint at `localhost:2026/mcp`
+2. The agent sends `tools/call` requests via `curl` to execute Python code
+   (`execute_python`) and capture screenshots (`screenshot`) inside Slicer
+
+### Test results
+
+| Test | Result |
+|------|--------|
+| Module loads (`slicer.modules.petindic`) | Pass |
+| Widget UI renders with Segment Editor embedded | Pass |
+| Load PET volume → segmentation auto-created | Pass |
+| Threshold effect → quantitative indices calculated | Pass — 22 indices returned |
+| Add second segment + switch → recalculation | Pass |
+| Undo/redo via `segmentEditorWidget.undo()`/`redo()` | Pass |
+| W/L presets (PET SUV, PET Rainbow) | Pass |
