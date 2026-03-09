@@ -1,11 +1,19 @@
-# PET-IndiC: Editor to Segment Editor Migration
+# PET-IndiC Extension: Segmentation Migration
 
 ## Overview
+
+This document covers two related migrations that modernize the PET-IndiC
+extension to use segmentation nodes instead of legacy label maps. Developed and
+tested with Slicer 5.10.
+
+---
+
+# Part 1: PET-IndiC Module — Editor to Segment Editor
 
 The PET-IndiC module was disabled in November 2021 when 3D Slicer removed the
 legacy Editor module ([Slicer commit 39283db](https://github.com/Slicer/Slicer/commit/39283db420baf502fa99865c9d5d58d0e5295a6e)).
 This migration replaces all legacy Editor API usage with the modern Segment
-Editor (`qMRMLSegmentEditorWidget`) API. Developed and tested with Slicer 5.10.
+Editor (`qMRMLSegmentEditorWidget`) API.
 
 ## Files Changed
 
@@ -144,3 +152,101 @@ using the MCP (Model Context Protocol) server bundled with slicer-skill at
 | Add second segment + switch → recalculation | Pass |
 | Undo/redo via `segmentEditorWidget.undo()`/`redo()` | Pass |
 | W/L presets (PET SUV, PET Rainbow) | Pass |
+
+---
+
+# Part 2: QuantitativeIndicesTool — Label Maps to Segmentations
+
+The QuantitativeIndicesTool module previously required users to select a
+`vtkMRMLLabelMapVolumeNode` and an integer label value, then "Generate" a
+parameter set for all labels before calculating. This migration replaces that
+workflow with native segmentation support — users select a segmentation node
+and a named segment, then calculate on demand.
+
+## Files Changed
+
+| File | Change |
+|------|--------|
+| `QuantitativeIndicesTool/QuantitativeIndicesTool.py` | Widget, Logic, and Test migration |
+
+**Not modified**: `PETIndiC.py` (already handles its own segment-to-label-map
+export and calls `QuantitativeIndicesToolLogic.run()` with a label volume),
+`PETVolumeSegmentStatisticsPlugin.py` (same pattern), `QuantitativeIndicesCLI`
+(C++ CLI unchanged — still receives label map + label value).
+
+## API Migration Map
+
+| Legacy Label Map API | Modern Segmentation API |
+|----------------------|------------------------|
+| `qMRMLNodeComboBox(vtkMRMLLabelMapVolumeNode)` | `qMRMLNodeComboBox(vtkMRMLSegmentationNode)` |
+| `QSpinBox` for label value (1, 2, 3, ...) | `QComboBox` populated with segment names/IDs |
+| `vtkImageAccumulate` to count label range | `segmentation.GetNumberOfSegments()` / `GetNthSegmentID()` |
+| Pass label map + label value to CLI directly | Export segment → temp label map (value=1) → CLI → remove temp |
+| Pre-generate CLI nodes for all labels ("Generate") | Calculate on demand for selected segment |
+| Store results in `cliNodes[labelValue]` dict | Read results directly from CLI output node |
+
+## Architecture Changes
+
+### Widget: Selectors
+- **Before**: Label map selector (`vtkMRMLLabelMapVolumeNode`) + label value
+  spin box + "Generate" / "Change Volumes" buttons for pre-caching CLI results
+- **After**: Segmentation selector (`vtkMRMLSegmentationNode`) + segment combo
+  box populated dynamically. No pre-generation step — calculate on demand.
+
+### Widget: Calculation Flow
+- **Before**: `onCalculateButton()` passes `self.labelNode` and
+  `labelValueSelector.value` directly to `logic.run()`, then diffs result
+  against pre-generated `cliNodes[labelValue]` in `writeResults()`
+- **After**: `onCalculateButton()` exports selected segment to a temporary
+  label map (value=1) via `ExportSegmentsToLabelmapNode()` with
+  `EXTENT_REFERENCE_GEOMETRY`, calls `logic.run()` with `labelValue=1`, removes
+  temp node, reads results directly from CLI output
+
+### Logic: `run()` Unchanged
+The `run(inputVolume, labelVolume, cliNode, labelValue, ...flags)` signature is
+preserved. PETIndiC.py calls this method with a label volume it already
+exported. A new `runOnSegment()` convenience method is added for callers that
+want to pass a segmentation node + segment ID directly.
+
+### Logic: `runOnSegment()` Added
+
+New convenience method for callers who have a segmentation node + segment ID:
+```python
+logic.runOnSegment(inputVolume, segmentationNode, segmentID,
+                   mean=True, peak=True, volume=True, ...)
+```
+Handles segment export, CLI execution, and temp node cleanup internally.
+
+### Widget: Additional Cleanup
+- `setMargin(0)` → `setContentsMargins(0, 0, 0, 0)` (deprecated in Qt5)
+- Removed `delayDisplay()` from Logic class (unused)
+- Removed commented-out screenshot widgets and old constructor
+
+## Removed Code
+- `self.labelSelector` — label map volume selector
+- `self.labelValueSelector` — integer spin box for label value
+- `self.parameterFrame` — "Generate" / "Change Volumes" buttons and label
+- `self.cliNodes` dict — pre-generated CLI nodes for each label value
+- `onParameterSetButton()` — pre-generation loop running CLI for every label
+- `onChangeVolumesButton()` / `confirmDelete()` — volume change workflow
+- `onLabelValueSelect()` — unused handler
+- `writeResults()` diff mechanism — old/new node comparison
+- `delayDisplay()` and `takeScreenshot()` in Logic — unused template methods
+- Commented-out screenshot widgets, old constructor, old `run()` signature
+
+## Test Changes
+- Segmentation node set directly on widget:
+  `widget.segmentationSelector.setCurrentNode(segmentationNode)`
+- No label map export step — the widget handles export internally
+- No `onParameterSetButton()` call needed
+- Segment switching via `widget.segmentSelector.setCurrentIndex(1)` instead of
+  `widget.labelValueSelector.setValue(2)`
+- Reference values preserved — `EXTENT_REFERENCE_GEOMETRY` ensures same geometry
+
+## Verification
+1. Open QuantitativeIndicesTool in Slicer
+2. Select a grayscale volume and a segmentation with segments
+3. Choose a segment from the dropdown → click Calculate → indices appear
+4. Switch to another segment → recalculate → new values
+5. Run self-test:
+   `slicer.modules.quantitativeindicestool.widgetRepresentation().self().onReloadAndTest()`
