@@ -12,54 +12,28 @@ from PETVolumeSegmentStatisticsPlugin import PETVolumeSegmentStatisticsPlugin
 class QuantitativeIndicesTool(ScriptedLoadableModule):
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
-    parent.title = "Quantitative Indices Tool" # TODO make this more human readable by adding spaces
+    parent.title = "Quantitative Indices Tool"
     parent.categories = ["Quantification"]
     parent.dependencies = ["QuantitativeIndicesCLI"]
-    parent.contributors = ["Ethan Ulrich (University of Iowa), Andrey Fedorov (SPL), Markus van Tol (University of Iowa), Christian Bauer (University of Iowa), Reinhard Beichel (University of Iowa), John Buatti (University of Iowa)"] # replace with "Firstname Lastname (Org)"
+    parent.contributors = ["Ethan Ulrich (University of Iowa), Andrey Fedorov (SPL), Markus van Tol (University of Iowa), Christian Bauer (University of Iowa), Reinhard Beichel (University of Iowa), John Buatti (University of Iowa)"]
     parent.helpText = """
-    This extension calculates simple quantitative features from a grayscale volume and label map.\n
-    Once both volumes have been selected, a parameter set must be generated.  Quantitative indices
-    may be calculated on individual values of the label map.  Even if different indices are calculated
-    at different times on the same label value, the previous calculations will be stored.
+    This extension calculates quantitative features from a grayscale volume and
+    a segmentation. Select an input volume and segmentation, choose a segment,
+    select the desired features, and click Calculate.
     """
     parent.acknowledgementText = """
-    This work is funded in part by Quantitative Imaging to Assess Response in Cancer Therapy Trials NIH grant U01-CA140206 and Quantitative Image Informatics for Cancer Research (QIICR) NIH grant U24 CA180918.
-    """ # replace with organization, grant and thanks.
-    #self.parent = parent
+    This work was funded in part by Quantitative Imaging to Assess Response in Cancer Therapy Trials NIH grant U01-CA140206 and Quantitative Image Informatics for Cancer Research (QIICR) NIH grant U24 CA180918.
+    """
 
     # register segment statistics plugin
     petSegmentStatisticsPlugin = PETVolumeSegmentStatisticsPlugin()
     SegmentStatisticsLogic.registerPlugin( petSegmentStatisticsPlugin )
-
-    # Add this test to the SelfTest module's list for discovery when the module
-    # is created.  Since this module may be discovered before SelfTests itself,
-    # create the list if it doesn't already exist.
-    #try:
-    #  slicer.selfTests
-    #except AttributeError:
-    #  slicer.selfTests = {}
-    #slicer.selfTests['QuantitativeIndicesTool'] = self.runTest
-
-  #def runTest(self):
-  #  tester = QuantitativeIndicesToolTest()
-  #  tester.runTest()
 
 #
 # qQuantitativeIndicesToolWidget
 #
 
 class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
-  """def __init__(self, parent = None):
-    if not parent:
-      self.parent = slicer.qMRMLWidget()
-      self.parent.setLayout(qt.QVBoxLayout())
-      self.parent.setMRMLScene(slicer.mrmlScene)
-    else:
-      self.parent = parent
-    self.layout = self.parent.layout()
-    if not parent:
-      self.setup()
-      self.parent.show()"""
 
   def setup(self):
     """Instantiate and connect widgets ...
@@ -79,7 +53,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     # grayscale volume selector
     #
     self.grayscaleSelector = slicer.qMRMLNodeComboBox()
-    self.grayscaleSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
+    self.grayscaleSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
     self.grayscaleSelector.selectNodeUponCreation = True
     self.grayscaleSelector.addEnabled = False
     self.grayscaleSelector.removeEnabled = False
@@ -92,76 +66,27 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.grayscaleNode = None
 
     #
-    # label map volume selector
+    # segmentation selector
     #
-    self.labelSelector = slicer.qMRMLNodeComboBox()
-    self.labelSelector.nodeTypes = ( ("vtkMRMLLabelMapVolumeNode"), "" )
-    self.labelSelector.selectNodeUponCreation = True
-    self.labelSelector.addEnabled = False
-    self.labelSelector.removeEnabled = False
-    self.labelSelector.noneEnabled = True
-    self.labelSelector.showHidden = False
-    self.labelSelector.showChildNodeTypes = False
-    self.labelSelector.setMRMLScene( slicer.mrmlScene )
-    self.labelSelector.setToolTip( "Input label map volume." )
-    parametersFormLayout.addRow("Label Map: ", self.labelSelector)
-    self.labelNode = None
+    self.segmentationSelector = slicer.qMRMLNodeComboBox()
+    self.segmentationSelector.nodeTypes = ["vtkMRMLSegmentationNode"]
+    self.segmentationSelector.selectNodeUponCreation = True
+    self.segmentationSelector.addEnabled = False
+    self.segmentationSelector.removeEnabled = False
+    self.segmentationSelector.noneEnabled = True
+    self.segmentationSelector.showHidden = False
+    self.segmentationSelector.showChildNodeTypes = False
+    self.segmentationSelector.setMRMLScene( slicer.mrmlScene )
+    self.segmentationSelector.setToolTip( "Input segmentation." )
+    parametersFormLayout.addRow("Segmentation: ", self.segmentationSelector)
+    self.segmentationNode = None
 
     #
-    # CLI node name and set button
+    # segment selector
     #
-    self.parameterFrame = qt.QFrame(self.parent)
-    self.parameterFrame.setLayout(qt.QHBoxLayout())
-    parametersFormLayout.addRow("Parameter Set: ", self.parameterFrame)
-
-    self.parameterFrameLabel = qt.QLabel(" (none generated) ", self.parameterFrame)
-    self.parameterFrameLabel.setToolTip( "Nodes for storing parameter flags and output." )
-    self.parameterFrame.layout().addWidget(self.parameterFrameLabel)
-
-    self.parameterName = qt.QLabel("", self.parameterFrame)
-    self.parameterName.setToolTip( "Nodes for storing parameter flags and output." )
-    self.parameterFrame.layout().addWidget(self.parameterName)
-
-    self.parameterSetButton = qt.QPushButton("Generate", self.parameterFrame)
-    self.parameterSetButton.setToolTip( "Generate a set of parameter nodes to store with the scene" )
-    self.parameterSetButton.setEnabled(False)
-    self.parameterFrame.layout().addWidget(self.parameterSetButton)
-    self.cliNodes = None
-
-    self.changeVolumesButton = qt.QPushButton("Change Volumes", self.parameterFrame)
-    self.changeVolumesButton.setToolTip("Change the grayscale volume and/or the label map.  Previous calculations from the scene will be deleted.")
-    self.changeVolumesButton.setEnabled(False)
-    self.parameterFrame.layout().addWidget(self.changeVolumesButton)
-
-    #
-    # label map value spin box
-    #
-    self.labelValueSelector = qt.QSpinBox()
-    self.labelValueSelector.setEnabled(False)
-    self.labelValueSelector.setMinimum(0)
-    self.labelValueSelector.setValue(1)
-    self.labelValueSelector.setToolTip( "Label value to calculate features" )
-    parametersFormLayout.addRow("Label Value: ", self.labelValueSelector)
-    self.totalLabels = 0
-
-    #
-    # check box to trigger taking screen shots for later use in tutorials
-    #
-    self.enableScreenshotsFlagCheckBox = qt.QCheckBox()
-    self.enableScreenshotsFlagCheckBox.checked = False
-    self.enableScreenshotsFlagCheckBox.setToolTip("If checked, take screen shots for tutorials. Use Save Data to write them to disk.")
-    #parametersFormLayout.addRow("Enable Screenshots", self.enableScreenshotsFlagCheckBox)
-
-    #
-    # scale factor for screen shots
-    #
-    self.screenshotScaleFactorSliderWidget = ctk.ctkSliderWidget()
-    self.screenshotScaleFactorSliderWidget.singleStep = 1.0
-    self.screenshotScaleFactorSliderWidget.minimum = 1.0
-    self.screenshotScaleFactorSliderWidget.maximum = 50.0
-    self.screenshotScaleFactorSliderWidget.value = 1.0
-    self.screenshotScaleFactorSliderWidget.setToolTip("Set scale factor for the screen shots.")
-    #parametersFormLayout.addRow("Screenshot scale factor", self.screenshotScaleFactorSliderWidget)
+    self.segmentSelector = qt.QComboBox()
+    self.segmentSelector.setToolTip( "Select segment to calculate features for." )
+    parametersFormLayout.addRow("Segment: ", self.segmentSelector)
 
     #
     # Create large list of quantitative features
@@ -174,7 +99,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.QIFrame1 = qt.QFrame(self.parent)
     self.QIFrame1.setLayout(qt.QHBoxLayout())
     self.QIFrame1.layout().setSpacing(0)
-    self.QIFrame1.layout().setMargin(0)
+    self.QIFrame1.layout().setContentsMargins(0, 0, 0, 0)
     self.featuresFormLayout.addRow("", self.QIFrame1)
 
     self.MeanCheckBox = qt.QCheckBox("Mean", self.QIFrame1)
@@ -200,7 +125,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.QIFrame2 = qt.QFrame(self.parent)
     self.QIFrame2.setLayout(qt.QHBoxLayout())
     self.QIFrame2.layout().setSpacing(0)
-    self.QIFrame2.layout().setMargin(0)
+    self.QIFrame2.layout().setContentsMargins(0, 0, 0, 0)
     self.featuresFormLayout.addRow("", self.QIFrame2)
 
     self.Quart1CheckBox = qt.QCheckBox("1st Quartile", self.QIFrame2)
@@ -226,7 +151,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.QIFrame3 = qt.QFrame(self.parent)
     self.QIFrame3.setLayout(qt.QHBoxLayout())
     self.QIFrame3.layout().setSpacing(0)
-    self.QIFrame3.layout().setMargin(0)
+    self.QIFrame3.layout().setContentsMargins(0, 0, 0, 0)
     self.featuresFormLayout.addRow("", self.QIFrame3)
 
     self.Q1CheckBox = qt.QCheckBox("Q1 Distribution", self.QIFrame3)
@@ -252,7 +177,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.QIFrame4 = qt.QFrame(self.parent)
     self.QIFrame4.setLayout(qt.QHBoxLayout())
     self.QIFrame4.layout().setSpacing(0)
-    self.QIFrame4.layout().setMargin(0)
+    self.QIFrame4.layout().setContentsMargins(0, 0, 0, 0)
     self.featuresFormLayout.addRow("", self.QIFrame4)
 
     self.Gly1CheckBox = qt.QCheckBox("Glycolysis Q1", self.QIFrame4)
@@ -278,7 +203,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.QIFrame5 = qt.QFrame(self.parent)
     self.QIFrame5.setLayout(qt.QHBoxLayout())
     self.QIFrame5.layout().setSpacing(0)
-    self.QIFrame5.layout().setMargin(0)
+    self.QIFrame5.layout().setContentsMargins(0, 0, 0, 0)
     self.featuresFormLayout.addRow("", self.QIFrame5)
 
     self.TLGCheckBox = qt.QCheckBox("TLG", self.QIFrame5)
@@ -304,7 +229,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.QIFrame6 = qt.QFrame(self.parent)
     self.QIFrame6.setLayout(qt.QHBoxLayout())
     self.QIFrame6.layout().setSpacing(0)
-    self.QIFrame6.layout().setMargin(0)
+    self.QIFrame6.layout().setContentsMargins(0, 0, 0, 0)
     self.featuresFormLayout.addRow("", self.QIFrame6)
 
     self.PeakCheckBox = qt.QCheckBox("Peak", self.QIFrame6)
@@ -332,7 +257,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.calculateButton.toolTip = "Calculate quantitative features."
     self.calculateButton.enabled = False
     self.featuresFormLayout.addRow(self.calculateButton)
-    
+
     #
     # Results Frame
     #
@@ -344,25 +269,20 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.resultsFrame = qt.QFrame(self.resultsCollapsibleButton)
     self.resultsFrame.setLayout(qt.QVBoxLayout())
     self.resultsFrame.layout().setSpacing(0)
-    self.resultsFrame.layout().setMargin(0)
+    self.resultsFrame.layout().setContentsMargins(0, 0, 0, 0)
     self.resultsFormLayout.addWidget(self.resultsFrame)
     self.tableView = slicer.qMRMLTableView(self.resultsFrame)
     self.tableView.setMinimumHeight(150)
     self.tableView.setSelectionMode(qt.QTableView.ContiguousSelection)
     self.resultsFrame.layout().addWidget(self.tableView)
-    
-    self.tableNode = None
 
-    # Add vertical spacer
-    # self.layout.addStretch(1)
+    self.tableNode = None
 
     # connections
     self.calculateButton.connect('clicked(bool)', self.onCalculateButton)
     self.grayscaleSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onGrayscaleSelect)
-    self.labelSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onLabelSelect)
-    self.parameterSetButton.connect('clicked(bool)', self.onParameterSetButton)
-    self.changeVolumesButton.connect('clicked(bool)',self.onChangeVolumesButton)
-    self.labelValueSelector.connect('valueChanged(int)',self.onLabelValueSelect)
+    self.segmentationSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onSegmentationSelect)
+    self.segmentSelector.connect('currentIndexChanged(int)', self.onSegmentSelect)
     self.selectAllButton.connect('clicked(bool)',self.onSelectAllButton)
     self.deselectAllButton.connect('clicked(bool)',self.onDeselectAllButton)
 
@@ -377,92 +297,31 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
       self.tableView.setMRMLTableNode(self.tableNode if self.tableNode else None)
 
   def onGrayscaleSelect(self, node):
-    """ Set the grayscale volume node.  Check if other buttons can be enabled
-    """
     self.grayscaleNode = node
-    self.parameterSetButton.enabled = bool(self.grayscaleNode) and bool(self.labelNode)
-    self.calculateButton.enabled = bool(self.grayscaleNode) and bool(self.labelNode) and bool(self.cliNodes)
+    self._updateCalculateButtonState()
 
+  def onSegmentationSelect(self, node):
+    self.segmentationNode = node
+    self.segmentSelector.clear()
+    if node:
+      segmentation = node.GetSegmentation()
+      for i in range(segmentation.GetNumberOfSegments()):
+        segmentID = segmentation.GetNthSegmentID(i)
+        segment = segmentation.GetSegment(segmentID)
+        self.segmentSelector.addItem(segment.GetName(), segmentID)
+    self._updateCalculateButtonState()
 
-  def onLabelSelect(self, node):
-    """ Set the label volume node.  Read the image and determine the number of label values.  Check if other
-    buttons can be enabled
-    """
-    self.labelNode = node
-    if bool(self.labelNode):
-      #find the correct number of label values
-      stataccum = vtk.vtkImageAccumulate()
-      stataccum.SetInputData(self.labelNode.GetImageData())
-      stataccum.Update()
-      lo = int(stataccum.GetMin()[0])
-      hi = int(stataccum.GetMax()[0])
-      self.labelValueSelector.setRange(lo,hi)
-      self.labelValueSelector.setEnabled(True)
-      self.totalLabels = (hi-lo)+1
-    else:
-      self.labelValueSelector.setEnabled(False)
-    self.parameterSetButton.enabled = bool(self.grayscaleNode) and bool(self.labelNode)
-    self.calculateButton.enabled = bool(self.grayscaleNode) and bool(self.labelNode) and bool(self.cliNodes)
+  def onSegmentSelect(self, index):
+    self._updateCalculateButtonState()
 
-
-  def onParameterSetButton(self):
-    """ Generate mostly-blank vtkMRMLCommandLineModuleNodes for every label value.  Give each node a unique name
-    so it can easily be found later.  Disable the volume selectors.  Enable the calculate button.
-    """
-    if not bool(self.cliNodes):
-      self.cliNodes = {}
-      self.parameterSetButton.setText('Generating...')
-      self.parameterSetButton.repaint()
-      slicer.app.processEvents()
-      for i in range(self.totalLabels):
-        parameters = {}
-        parameters['Grayscale_Image'] = self.grayscaleNode.GetID()
-        parameters['Label_Image'] = self.labelNode.GetID()
-        parameters['Label_Value'] = str(i)
-        self.cliNodes[i] = slicer.cli.run(slicer.modules.quantitativeindicescli,None,parameters,wait_for_completion=True)
-        self.cliNodes[i].SetName('Label_'+str(i)+'_Quantitative_Indices')
-      self.parameterFrameLabel.setText('Quantitative Indices')
-      self.parameterSetButton.setText('Generate')
-    self.calculateButton.enabled = bool(self.grayscaleNode) and bool(self.labelNode) and bool(self.cliNodes)
-    self.grayscaleSelector.enabled = not (bool(self.grayscaleNode) and bool(self.labelNode) and bool(self.cliNodes))
-    self.labelSelector.enabled = not (bool(self.grayscaleNode) and bool(self.labelNode) and bool(self.cliNodes))
-    self.changeVolumesButton.enabled = bool(self.grayscaleNode) and bool(self.labelNode) and bool(self.cliNodes)
-    self.parameterSetButton.enabled = not (bool(self.grayscaleNode) and bool(self.labelNode) and bool(self.cliNodes))
-
-
-  def onChangeVolumesButton(self):
-    """ Bring up a warning window.  If proceeding, delete all vtkMRMLCommandLineModuleNodes that were previously
-    generated.  Re-enable the volume selectors and parameter set button.
-    """
-    if self.confirmDelete('Changing the volumes will delete any previous calculations from the scene.  Proceed?'):
-      for i in range(self.totalLabels):
-        slicer.mrmlScene.RemoveNode(self.cliNodes[i])
-      self.cliNodes = None
-      self.grayscaleSelector.enabled = bool(self.grayscaleNode) and bool(self.labelNode) and not bool(self.cliNodes)
-      self.labelSelector.enabled = bool(self.grayscaleNode) and bool(self.labelNode) and not bool(self.cliNodes)
-      self.parameterSetButton.enabled = bool(self.grayscaleNode) and bool(self.labelNode)
-      self.calculateButton.enabled = bool(self.grayscaleNode) and bool(self.labelNode) and bool(self.cliNodes)
-      self.parameterFrameLabel.setText(' (none generated) ')
-    else:
-      return
-
-
-  def confirmDelete(self, message):
-    """ Warning pop-up before deleting previously calculated nodes
-    """
-    delete = qt.QMessageBox.question(slicer.util.mainWindow(),'Quantitative Indices',message,
-                    qt.QMessageBox.Yes, qt.QMessageBox.No)
-    return delete == qt.QMessageBox.Yes
-
-
-  def onLabelValueSelect(self, int):
-    #TODO make this do something, possibly select the correct node associated with label value?
-    pass
-
+  def _updateCalculateButtonState(self):
+    self.calculateButton.enabled = (
+      bool(self.grayscaleNode) and
+      bool(self.segmentationNode) and
+      self.segmentSelector.currentIndex >= 0
+    )
 
   def onSelectAllButton(self):
-    """ Check all quantitative features
-    """
     self.MeanCheckBox.checked = True
     self.StdDevCheckBox.checked = True
     self.MinCheckBox.checked = True
@@ -486,10 +345,7 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.PeakCheckBox.checked = True
     self.VolumeCheckBox.checked = True
 
-
   def onDeselectAllButton(self):
-    """ Uncheck all quantitative features
-    """
     self.MeanCheckBox.checked = False
     self.StdDevCheckBox.checked = False
     self.MinCheckBox.checked = False
@@ -513,117 +369,85 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     self.PeakCheckBox.checked = False
     self.VolumeCheckBox.checked = False
 
-
   def cleanup(self):
     pass
 
-
   def volumesAreValid(self):
-    """ Returns true if grayscale volume and label volume are the same dimensions
-    """
-    if not self.grayscaleNode or not self.labelNode:
+    if not self.grayscaleNode or not self.segmentationNode:
       return False
-    if not self.grayscaleNode.GetImageData() or not self.labelNode.GetImageData():
+    if not self.grayscaleNode.GetImageData():
       return False
-    #if self.grayscaleNode.GetImageData().GetDimensions() != self.labelNode.GetImageData().GetDimensions():
-      #return False
+    segmentID = self.segmentSelector.currentData
+    if not segmentID:
+      return False
     return True
 
+  def _exportSegmentToLabelMap(self, segmentationNode, segmentID, referenceVolumeNode):
+    """Export a single segment to a temporary label map volume (label value = 1)."""
+    labelNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLLabelMapVolumeNode', 'temp_qi_label')
+    segmentIds = vtk.vtkStringArray()
+    segmentIds.InsertNextValue(segmentID)
+    slicer.modules.segmentations.logic().ExportSegmentsToLabelmapNode(
+        segmentationNode, segmentIds, labelNode, referenceVolumeNode,
+        slicer.vtkSegmentation.EXTENT_REFERENCE_GEOMETRY)
+    return labelNode
 
   def onCalculateButton(self):
-    """ Creates a temporary vtkMRMLCommandLineModuleNode after running the logic and passes it
-    to writeResults() method
-    """
     if not self.volumesAreValid():
       qt.QMessageBox.warning(slicer.util.mainWindow(),
-          "Quantitative Indices", "Volumes do not have the same geometry.")
+          "Quantitative Indices", "Please select a valid volume, segmentation, and segment.")
       return
 
     self.calculateButton.text = "Working..."
     self.calculateButton.repaint()
     slicer.app.processEvents()
 
-    #logic = QuantitativeIndicesToolLogic(self.grayscaleNode,self.labelNode)
-    #logic = QuantitativeIndicesToolLogic()
-    #enableScreenshotsFlag = self.enableScreenshotsFlagCheckBox.checked
-    #screenshotScaleFactor = int(self.screenshotScaleFactorSliderWidget.value)
-    labelValue = int(self.labelValueSelector.value)
-    # Connections to quantitative feature selections
-    meanFlag = self.MeanCheckBox.checked
-    stddevFlag = self.StdDevCheckBox.checked
-    minFlag = self.MinCheckBox.checked
-    maxFlag = self.MaxCheckBox.checked
-    quart1Flag = self.Quart1CheckBox.checked
-    medianFlag = self.MedianCheckBox.checked
-    quart3Flag = self.Quart3CheckBox.checked
-    upperAdjacentFlag = self.UpperAdjacentCheckBox.checked
-    q1Flag = self.Q1CheckBox.checked
-    q2Flag = self.Q2CheckBox.checked
-    q3Flag = self.Q3CheckBox.checked
-    q4Flag = self.Q4CheckBox.checked
-    gly1Flag = self.Gly1CheckBox.checked
-    gly2Flag = self.Gly2CheckBox.checked
-    gly3Flag = self.Gly3CheckBox.checked
-    gly4Flag = self.Gly4CheckBox.checked
-    TLGFlag = self.TLGCheckBox.checked
-    SAMFlag = self.SAMCheckBox.checked
-    SAMBGFlag = self.SAMBGCheckBox.checked
-    RMSFlag = self.RMSCheckBox.checked
-    PeakFlag = self.PeakCheckBox.checked
-    VolumeFlag = self.VolumeCheckBox.checked
-
-    """newNode = logic.run(self.grayscaleNode, self.labelNode, None, enableScreenshotsFlag, screenshotScaleFactor,
-                        labelValue, meanFlag, stddevFlag, minFlag, maxFlag, quart1Flag, medianFlag, quart3Flag,
-                        upperAdjacentFlag, q1Flag, q2Flag, q3Flag, q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag,
-                        TLGFlag, SAMFlag, SAMBGFlag, RMSFlag, PeakFlag, VolumeFlag)"""
-
-    newNode = self.logic.run(self.grayscaleNode, self.labelNode, None, labelValue, meanFlag, stddevFlag, minFlag,
-                        maxFlag, quart1Flag, medianFlag, quart3Flag, upperAdjacentFlag, q1Flag, q2Flag, q3Flag,
-                        q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag, TLGFlag, SAMFlag, SAMBGFlag, RMSFlag,
-                        PeakFlag, VolumeFlag)
-
-    newNode.SetName('Temp_CommandLineModule')
+    segmentID = self.segmentSelector.currentData
+    labelNode = self._exportSegmentToLabelMap(self.segmentationNode, segmentID, self.grayscaleNode)
+    try:
+      newNode = self.logic.run(self.grayscaleNode, labelNode, None, 1,
+                          self.MeanCheckBox.checked, self.StdDevCheckBox.checked,
+                          self.MinCheckBox.checked, self.MaxCheckBox.checked,
+                          self.Quart1CheckBox.checked, self.MedianCheckBox.checked,
+                          self.Quart3CheckBox.checked, self.UpperAdjacentCheckBox.checked,
+                          self.Q1CheckBox.checked, self.Q2CheckBox.checked,
+                          self.Q3CheckBox.checked, self.Q4CheckBox.checked,
+                          self.Gly1CheckBox.checked, self.Gly2CheckBox.checked,
+                          self.Gly3CheckBox.checked, self.Gly4CheckBox.checked,
+                          self.TLGCheckBox.checked, self.SAMCheckBox.checked,
+                          self.SAMBGCheckBox.checked, self.RMSCheckBox.checked,
+                          self.PeakCheckBox.checked, self.VolumeCheckBox.checked)
+    finally:
+      slicer.mrmlScene.RemoveNode(labelNode)
 
     self.writeResults(newNode)
     self.calculateButton.text = "Calculate"
-   
-  def writeResults(self,vtkMRMLCommandLineModuleNode):
-    """ Determines the difference between the temporary vtkMRMLCommandLineModuleNode and the "member"
-    vtkMRMLCommandLineModuleNode for every quantitative feature.  Creates an output table to display
-    on the screen.  Deletes the temporary node.
-    """
+
+  def writeResults(self, cliNode):
+    """Read CLI output and populate the results table."""
     if not self.tableNode:
       self.tableNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLTableNode','Quantitative Indices Table')
 
     imageUnits = self.logic.getImageUnits(self.grayscaleNode)
 
-    table = self.tableNode 
-    
+    table = self.tableNode
     tableWasModified = table.StartModify()
     table.RemoveAllColumns()
     table.AddColumn().SetName("Index")
     table.AddColumn().SetName("Value")
     table.AddColumn().SetName("Units")
-    
-    newNode = vtkMRMLCommandLineModuleNode
-    labelValue = int(self.labelValueSelector.value)
-    oldNode = self.cliNodes[labelValue]
-    for i in range(24):
-      newResult = newNode.GetParameterDefault(3,i)
-      if (newResult != '--'):
-        oldResult = oldNode.GetParameterDefault(3,i)
-        feature = oldNode.GetParameterName(3,i)
-        if (oldResult == '--'):
-          flagName = oldNode.GetParameterName(2,i)
-          oldNode.SetParameterAsString(feature,newResult)
-          oldNode.SetParameterAsString(flagName,'true')
-        feature = feature.replace('_s','')
-        feature = feature.replace('_',' ')
-        if (feature==""): continue
+
+    for i in range(cliNode.GetNumberOfParametersInGroup(3)):
+      result = cliNode.GetParameterDefault(3, i)
+      if result != '--':
+        feature = cliNode.GetParameterName(3, i)
+        feature = feature.replace('_s', '').replace('_', ' ')
+        if feature == '':
+          continue
         units = self.logic.getUnitsForIndex(imageUnits, feature)
         row = table.AddEmptyRow()
         table.GetTable().GetColumn(0).SetValue(row, feature)
-        table.GetTable().GetColumn(1).SetValue(row, newResult)
+        table.GetTable().GetColumn(1).SetValue(row, result)
         table.GetTable().GetColumn(2).SetValue(row, units)
 
     table.SetUseColumnNameAsColumnHeader(True)
@@ -631,33 +455,19 @@ class QuantitativeIndicesToolWidget(ScriptedLoadableModuleWidget):
     table.EndModify(tableWasModified)
     self.setMeasurementsTable(table)
 
-    # TODO find a better way to retrieve the software revision
-    # use slicer.modules.QuantitativeIndicesToolWidget.software_version to retrieve
-    self.software_version = newNode.GetParameterDefault(0,0)
-    slicer.mrmlScene.RemoveNode(newNode)
+    self.software_version = cliNode.GetParameterDefault(0, 0)
+    slicer.mrmlScene.RemoveNode(cliNode)
 
 #
 # QuantitativeIndicesToolLogic
 #
 
 class QuantitativeIndicesToolLogic(ScriptedLoadableModuleLogic):
-  """This class should implement all the actual
-  computation done by your module.  The interface
-  should be such that other python code can import
-  this class and make use of the functionality without
-  requiring an instance of the Widget
-  """
-  #def __init__(self, grayscaleVolume, labelVolume):
-    #TODO initialize the nodes
-    #pass
+
   def __init__(self, parent = None):
     ScriptedLoadableModuleLogic.__init__(self, parent)
 
   def hasImageData(self,volumeNode):
-    """This is a dummy logic method that
-    returns true if the passed in volume
-    node has valid image data
-    """
     if not volumeNode:
       print('no volume node')
       return False
@@ -666,70 +476,10 @@ class QuantitativeIndicesToolLogic(ScriptedLoadableModuleLogic):
       return False
     return True
 
-
-  def delayDisplay(self,message,msec=1000):
-    #
-    # logic version of delay display
-    #
-    print(message)
-    self.info = qt.QDialog()
-    self.infoLayout = qt.QVBoxLayout()
-    self.info.setLayout(self.infoLayout)
-    self.label = qt.QLabel(message,self.info)
-    self.infoLayout.addWidget(self.label)
-    qt.QTimer.singleShot(msec, self.info.close)
-    self.info.exec_()
-
-
-  """def takeScreenshot(self,name,description,type=-1):
-    # show the message even if not taking a screen shot
-    self.delayDisplay(description)
-
-    if self.enableScreenshots == 0:
-      return
-
-    lm = slicer.app.layoutManager()
-    # switch on the type to get the requested window
-    widget = 0
-    if type == -1:
-      # full window
-      widget = slicer.util.mainWindow()
-    elif type == slicer.qMRMLScreenShotDialog().FullLayout:
-      # full layout
-      widget = lm.viewport()
-    elif type == slicer.qMRMLScreenShotDialog().ThreeD:
-      # just the 3D window
-      widget = lm.threeDWidget(0).threeDView()
-    elif type == slicer.qMRMLScreenShotDialog().Red:
-      # red slice window
-      widget = lm.sliceWidget("Red")
-    elif type == slicer.qMRMLScreenShotDialog().Yellow:
-      # yellow slice window
-      widget = lm.sliceWidget("Yellow")
-    elif type == slicer.qMRMLScreenShotDialog().Green:
-      # green slice window
-      widget = lm.sliceWidget("Green")
-
-    # grab and convert to vtk image data
-    qpixMap = qt.QPixmap().grabWidget(widget)
-    qimage = qpixMap.toImage()
-    imageData = vtk.vtkImageData()
-    slicer.qMRMLUtils().qImageToVtkImageData(qimage,imageData)
-
-    annotationLogic = slicer.modules.annotations.logic()
-    annotationLogic.CreateSnapShot(name, description, type, self.screenshotScaleFactor, imageData)"""
-
-
-  """def run(self,inputVolume,labelVolume,cliNode,enableScreenshots=0,screenshotScaleFactor=1,labelValue=1,mean=False,
-          stddev=False,minimum=False,maximum=False,quart1=False,median=False,quart3=False,adj=False,
-          q1=False,q2=False,q3=False,q4=False,gly1=False,gly2=False,gly3=False,gly4=False,tlg=False,
-          sam=False,samBG=False,rms=False,peak=False,volume=False):"""
   def run(self,inputVolume,labelVolume,cliNode,labelValue=1,mean=False,stddev=False,minimum=False,maximum=False,
           quart1=False,median=False,quart3=False,adj=False,q1=False,q2=False,q3=False,q4=False,gly1=False,
           gly2=False,gly3=False,gly4=False,tlg=False,sam=False,samBG=False,rms=False,peak=False,volume=False):
-    """
-    Run the actual algorithm
-    """
+    """Run the CLI with a grayscale volume and label map."""
     qiModule = slicer.modules.quantitativeindicescli
 
     parameters = {}
@@ -781,13 +531,35 @@ class QuantitativeIndicesToolLogic(ScriptedLoadableModuleLogic):
     if(volume):
       parameters['Volume'] = 'true'
 
-
     newCLINode = slicer.cli.run(qiModule,cliNode,parameters,wait_for_completion=True)
-
-    #self.takeScreenshot('QuantitativeIndicesTool-Start','Start',-1)
-
     return newCLINode
-  
+
+  def runOnSegment(self, inputVolume, segmentationNode, segmentID, cliNode=None,
+                   mean=False, stddev=False, minimum=False, maximum=False,
+                   quart1=False, median=False, quart3=False, adj=False,
+                   q1=False, q2=False, q3=False, q4=False,
+                   gly1=False, gly2=False, gly3=False, gly4=False,
+                   tlg=False, sam=False, samBG=False, rms=False,
+                   peak=False, volume=False):
+    """Convenience method: export segment to temp label map, run CLI, clean up."""
+    labelNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLLabelMapVolumeNode', 'temp_qi_export')
+    segmentIds = vtk.vtkStringArray()
+    segmentIds.InsertNextValue(segmentID)
+    slicer.modules.segmentations.logic().ExportSegmentsToLabelmapNode(
+        segmentationNode, segmentIds, labelNode, inputVolume,
+        slicer.vtkSegmentation.EXTENT_REFERENCE_GEOMETRY)
+    try:
+      result = self.run(inputVolume, labelNode, cliNode, labelValue=1,
+                        mean=mean, stddev=stddev, minimum=minimum, maximum=maximum,
+                        quart1=quart1, median=median, quart3=quart3, adj=adj,
+                        q1=q1, q2=q2, q3=q3, q4=q4,
+                        gly1=gly1, gly2=gly2, gly3=gly3, gly4=gly4,
+                        tlg=tlg, sam=sam, samBG=samBG, rms=rms,
+                        peak=peak, volume=volume)
+    finally:
+      slicer.mrmlScene.RemoveNode(labelNode)
+    return result
+
   def getImageUnits(self, imageNode):
     """Search for units in the image node attributes or voxel value units"""
     units = None
@@ -796,12 +568,11 @@ class QuantitativeIndicesToolLogic(ScriptedLoadableModuleLogic):
     elif imageNode.GetVoxelValueUnits():
       units =  imageNode.GetVoxelValueUnits().GetCodeValue()
     return units
-  
+
   def getUnitsForIndex(self, imageUnits, indexName):
     """Interpret units """
     if imageUnits==None: imageUnits='{-}g/ml'
-    if imageUnits not in ['{-}g/ml','{SUVbw}g/ml','{SUVlbm}g/ml','{SUVibw}g/ml']: # TODO '{SUVbsa}cm2/ml'
-      #print('WARNING: could not interpret units for '+ indexName +'. Units: '+ imageUnits)
+    if imageUnits not in ['{-}g/ml','{SUVbw}g/ml','{SUVlbm}g/ml','{SUVibw}g/ml']:
       return '-'
     else:
       units = (imageUnits.split('{')[1]).split('}')[0]
@@ -809,45 +580,31 @@ class QuantitativeIndicesToolLogic(ScriptedLoadableModuleLogic):
         return units
       elif indexName=='Volume':
         return 'ml'
-      #elif indexName=='Variance':
-        #return units + '^2'
       elif indexName in ['TLG','Glycolysis Q1','Glycolysis Q2','Glycolysis Q3','Glycolysis Q4','SAM']:
         return (units + '*ml') if units!='-' else '-'
       elif indexName in ['Q1 Distribution','Q2 Distribution','Q3 Distribution','Q4 Distribution']:
         return '%'
       else:
-        #print('WARNING: could not interpret units for '+ indexName +'. Units: '+ imageUnits)
         return '-'
 
 from DICOMLib import DICOMUtils
 class QuantitativeIndicesToolTest(ScriptedLoadableModuleTest):
-#class QuantitativeIndicesToolTest(unittest.TestCase):
-  """
-  This is the test case for your scripted module.
-  """
+  """Test case for the QuantitativeIndicesTool module."""
 
   def setUp(self):
-    """ Open temporary DICOM database
-    """
     slicer.mrmlScene.Clear(0)
     self.tempDataDir = os.path.join(slicer.app.temporaryPath,'PETTest')
     self.tempDicomDatabaseDir = os.path.join(slicer.app.temporaryPath,'PETTestDicom')
 
   def runTest(self):
-    """Run as few or as many tests as needed here.
-    """
     self.setUp()
     self.test_QuantitativeIndicesTool1()
     self.tearDown()
 
   def doCleanups(self):
-    """ cleanup temporary data in case an exception occurs
-    """
     self.tearDown()
 
   def tearDown(self):
-    """ Close temporary DICOM database and remove temporary data
-    """
     try:
       import shutil
       if os.path.exists(self.tempDataDir):
@@ -899,8 +656,7 @@ class QuantitativeIndicesToolTest(ScriptedLoadableModuleTest):
     return imageNode
 
   def test_QuantitativeIndicesTool1(self):
-    """ produce measurements using QuantitativeIndicesTool and verify results
-    """
+    """Produce measurements using QuantitativeIndicesTool and verify results."""
     try:
       self.assertIsNotNone( slicer.modules.quantitativeindicescli )
       with DICOMUtils.TemporaryDICOMDatabase(self.tempDicomDatabaseDir) as db:
@@ -921,24 +677,19 @@ class QuantitativeIndicesToolTest(ScriptedLoadableModuleTest):
         segmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(petNode)
 
         import vtkSegmentationCorePython as vtkSegmentationCore
-        # Geometry for each segment is defined by: radius, posX, posY, posZ
         segmentGeometries = [[30,-54,232,-980], [30,-41,232,-1065], [50,112,232,-1264]]
         for segmentGeometry in segmentGeometries:
           sphereSource = vtk.vtkSphereSource()
           sphereSource.SetRadius(segmentGeometry[0])
           sphereSource.SetCenter(segmentGeometry[1], segmentGeometry[2], segmentGeometry[3])
           sphereSource.Update()
-          segment = vtkSegmentationCore.vtkSegment()
-          uniqueSegmentID = segmentationNode.GetSegmentation().GenerateUniqueSegmentID("Test")
-          segmentationNode.AddSegmentFromClosedSurfaceRepresentation(sphereSource.GetOutput(), uniqueSegmentID)
+          segmentationNode.AddSegmentFromClosedSurfaceRepresentation(sphereSource.GetOutput(),
+              segmentationNode.GetSegmentation().GenerateUniqueSegmentID("Test"))
 
-        labelNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLLabelMapVolumeNode')
-        labelNode.CreateDefaultDisplayNodes()
-        slicer.modules.segmentations.logic().ExportAllSegmentsToLabelmapNode(segmentationNode, labelNode)
-        widget.labelSelector.setCurrentNode(labelNode)
+        widget.segmentationSelector.setCurrentNode(segmentationNode)
 
-        self.delayDisplay('Calculating measurements for label 1')
-        widget.onParameterSetButton()
+        self.delayDisplay('Calculating measurements for segment 1')
+        widget.segmentSelector.setCurrentIndex(0)
         widget.onSelectAllButton()
         widget.onCalculateButton()
         values = {'Mean':3.67861, \
@@ -949,8 +700,8 @@ class QuantitativeIndicesToolTest(ScriptedLoadableModuleTest):
           'TLG':356.782}
         self._verifyResults(widget.tableNode, values)
 
-        self.delayDisplay('Calculating measurements for label 2')
-        widget.labelValueSelector.setValue(2)
+        self.delayDisplay('Calculating measurements for segment 2')
+        widget.segmentSelector.setCurrentIndex(1)
         widget.onCalculateButton()
         values = {'Mean':3.49592, \
           'Peak':19.2768,\
@@ -966,7 +717,7 @@ class QuantitativeIndicesToolTest(ScriptedLoadableModuleTest):
       import traceback
       traceback.print_exc()
       self.delayDisplay('Test caused exception!\n' + str(e))
-  
+
   def _verifyResults(self, resultsTable, referenceMeasurements={}):
     assert(resultsTable!=None)
     matchedMeasurements = set()
@@ -977,4 +728,3 @@ class QuantitativeIndicesToolTest(ScriptedLoadableModuleTest):
         matchedMeasurements.add(index)
         self.assertTrue(abs(float(value)-referenceMeasurements[index])<0.01) # account for potential rounding differences
     self.assertTrue(len(matchedMeasurements)==len(referenceMeasurements))
-    

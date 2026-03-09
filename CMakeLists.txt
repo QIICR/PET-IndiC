@@ -9,7 +9,7 @@ set(EXTENSION_CATEGORY "Quantification")
 set(EXTENSION_CONTRIBUTORS "Ethan Ulrich (University of Iowa), Christian Bauer (University of Iowa), Markus van Tol (University of Iowa), Andrey Fedorov (SPL), Reinhard R. Beichel (University of Iowa), John Buatti (University of Iowa)")
 set(EXTENSION_DESCRIPTION "The PET-IndiC Extension allows for fast segmentation of regions of interest and calculation of quantitative indices.")
 set(EXTENSION_ICONURL "https://raw.githubusercontent.com/QIICR/PET-IndiC/master/PET-IndiC.png")
-set(EXTENSION_SCREENSHOTURLS "https://www.slicer.org/slicerWiki/images/3/32/PET-IndiC_Screenshot1.png https://www.slicer.org/slicerWiki/images/8/8b/PET-IndiC_Screenshot3.png https://www.slicer.org/slicerWiki/images/8/8e/PET-IndiC_Screenshot5.png")
+set(EXTENSION_SCREENSHOTURLS "https://raw.githubusercontent.com/QIICR/PET-IndiC/master/doc/segmentation.jpg https://raw.githubusercontent.com/QIICR/PET-IndiC/master/doc/phantom.jpg")
 
 #-----------------------------------------------------------------------------
 # Extension dependencies
