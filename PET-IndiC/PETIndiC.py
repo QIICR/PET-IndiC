@@ -1,7 +1,8 @@
 import os
 import unittest
-from __main__ import vtk, qt, ctk, slicer
+import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
+import vtkSegmentationCore
 import logging
 
 #
@@ -42,12 +43,9 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     self.logic = PETIndiCLogic()
 
     self.moduleVisible = True
-
-    sliceNodes = slicer.util.getNodes('vtkMRMLSliceNode*')
-    for sliceNode in sliceNodes:
-      sliceNodes[sliceNode].UseLabelOutlineOn()
-
-    self.volumeDictionary = {}
+    self._segmentationObserverTag = None
+    self._observedSegmentation = None
+    self._debounceTimer = None
     self.items = []
 
     #
@@ -64,7 +62,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     # input volume selector
     #
     self.inputSelector = slicer.qMRMLNodeComboBox()
-    self.inputSelector.nodeTypes = ( ("vtkMRMLScalarVolumeNode"), "" )
+    self.inputSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
     self.inputSelector.selectNodeUponCreation = False
     self.inputSelector.addEnabled = False
     self.inputSelector.removeEnabled = True
@@ -72,25 +70,25 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     self.inputSelector.showHidden = False
     self.inputSelector.showChildNodeTypes = False
     self.inputSelector.setMRMLScene( slicer.mrmlScene )
-    self.inputSelector.setToolTip( "Choose the input image ." )
+    self.inputSelector.setToolTip( "Choose the input image." )
     imagesFormLayout.addRow("Input Image: ", self.inputSelector)
 
     #
-    # input label image selector
+    # segmentation selector
     #
-    self.labelSelector = slicer.qMRMLNodeComboBox()
-    self.labelSelector.nodeTypes = ( ("vtkMRMLLabelMapVolumeNode"), "" )
-    self.labelSelector.setEnabled(False)
-    self.labelSelector.selectNodeUponCreation = False
-    self.labelSelector.addEnabled = True
-    self.labelSelector.removeEnabled = True
-    self.labelSelector.renameEnabled = True
-    self.labelSelector.noneEnabled = False
-    self.labelSelector.showHidden = False
-    self.labelSelector.showChildNodeTypes = False
-    #self.labelSelector.setMRMLScene( slicer.mrmlScene )
-    self.labelSelector.setToolTip( "Select active segmentation image or create a new one." )
-    imagesFormLayout.addRow("Label Image: ", self.labelSelector)
+    self.segmentationSelector = slicer.qMRMLNodeComboBox()
+    self.segmentationSelector.nodeTypes = ["vtkMRMLSegmentationNode"]
+    self.segmentationSelector.setEnabled(False)
+    self.segmentationSelector.selectNodeUponCreation = True
+    self.segmentationSelector.addEnabled = True
+    self.segmentationSelector.removeEnabled = True
+    self.segmentationSelector.renameEnabled = True
+    self.segmentationSelector.noneEnabled = False
+    self.segmentationSelector.showHidden = False
+    self.segmentationSelector.showChildNodeTypes = False
+    self.segmentationSelector.setMRMLScene( slicer.mrmlScene )
+    self.segmentationSelector.setToolTip( "Select active segmentation or create a new one." )
+    imagesFormLayout.addRow("Segmentation: ", self.segmentationSelector)
 
     #
     # window/level presets
@@ -98,7 +96,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     self.presetsFrame = qt.QFrame(self.parent)
     self.presetsFrame.setLayout(qt.QHBoxLayout())
     self.presetsFrame.layout().setSpacing(0)
-    self.presetsFrame.layout().setMargin(0)
+    self.presetsFrame.layout().setContentsMargins(0, 0, 0, 0)
     imagesFormLayout.addRow("W/L Presets:", self.presetsFrame)
     self.preset1Button = qt.QPushButton("FDG PET")
     self.preset1Button.toolTip = "PET SUV image preset (W/L=6/3)"
@@ -118,12 +116,18 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     self.preset4Button.setEnabled(0)
 
     #
-    # editor effects
+    # segment editor widget
     #
-    slicer.modules.editor.createNewWidgetRepresentation()
-    self.editorWidget = slicer.modules.EditorWidget
-    self.layout.addWidget(self.editorWidget.editLabelMapsFrame)
-    self.editorWidget.editLabelMapsFrame.collapsed = False
+    self.segmentEditorWidget = slicer.qMRMLSegmentEditorWidget()
+    self.segmentEditorWidget.setMaximumNumberOfUndoStates(10)
+    segmentEditorNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLSegmentEditorNode')
+    self.segmentEditorWidget.setMRMLSegmentEditorNode(segmentEditorNode)
+    self.segmentEditorWidget.setMRMLScene(slicer.mrmlScene)
+    self.segmentEditorWidget.setAutoShowSourceVolumeNode(False)
+    self.segmentEditorWidget.setSourceVolumeNodeSelectorVisible(False)
+    self.segmentEditorWidget.setSegmentationNodeSelectorVisible(False)
+    self.segmentEditorWidget.setSwitchToSegmentationsButtonVisible(False)
+    self.layout.addWidget(self.segmentEditorWidget)
 
     #
     # quantitative indices
@@ -169,7 +173,6 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     #
     # recalculate button
     #
-    self.recalculateButton = self.qiWidget.calculateButton
     self.recalculateButton = qt.QPushButton("Recalculate")
     self.recalculateButton.toolTip = "Recalculate using current quantitative features."
     self.recalculateButton.enabled = False
@@ -180,8 +183,6 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     #
     self.unitsFrame = qt.QFrame(self.parent)
     self.unitsFrame.setLayout(qt.QHBoxLayout())
-    #self.unitsFrame.layout().setSpacing(0)
-    #self.unitsFrame.layout().setMargin(0)
     self.unitsFrameLabel = qt.QLabel('Voxel Units: ', self.unitsFrame)
     self.unitsFrame.layout().addWidget(self.unitsFrameLabel)
     self.layout.addWidget(self.unitsFrame)
@@ -189,7 +190,6 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     #
     # results table
     #
-    #self.resultsTable = qt.QTableWidget()
     self.resultsTable = CustomTableWidget()
     self.resultsTable.visible = False # hide until populated
     self.resultsTable.setColumnCount(3)
@@ -211,7 +211,7 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     self.preset2Button.connect('clicked(bool)',self.onPreset2Button)
     self.preset3Button.connect('clicked(bool)',self.onPreset3Button)
     self.preset4Button.connect('clicked(bool)',self.onPreset4Button)
-    self.editorWidget.toolsColor.colorSpin.connect('valueChanged(int)', self.calculateIndicesFromCurrentLabel)
+    self.segmentEditorWidget.connect('currentSegmentIDChanged(QString)', self.onCurrentSegmentChanged)
     self.MeanCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
     self.StdDevCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
     self.MinCheckBox.connect('clicked(bool)', self.onFeatureSelectionChanged)
@@ -242,46 +242,93 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
     self.layout.addStretch(1)
 
   def cleanup(self):
-    self.editorWidget.toolsColor.colorSpin.disconnect('valueChanged(int)', self.calculateIndicesFromCurrentLabel)
-    for volume in self.volumeDictionary:
-      labelNode = self.volumeDictionary[volume].labelNode
-      labelNode.RemoveObserver(self.volumeDictionary[volume].observerTag)
-      # delete the custom attributes on the volume node
-      try:
-        del self.volumeDictionary[volume].labelNode
-        del self.volumeDictionary[volume].observerTag
-        del self.volumeDictionary[volume].labels
-      except AttributeError:
-        pass
+    self.segmentEditorWidget.disconnect('currentSegmentIDChanged(QString)', self.onCurrentSegmentChanged)
+    self._removeSegmentationObserver()
+    self.segmentEditorWidget.setMRMLScene(None)
     self.items = []
 
   def enter(self):
     self.moduleVisible = True
-    if not self.resultsTable.visible: # update values when widget opens
-      self.calculateIndicesFromCurrentLabel(self.editorWidget.toolsColor.colorSpin.value)
+    self.segmentEditorWidget.installKeyboardShortcuts()
+    self.segmentEditorWidget.setupViewObservations()
+    if not self.resultsTable.visible:
+      self.calculateIndicesForCurrentSegment()
 
   def exit(self):
     self.moduleVisible = False
-    self.editorWidget.exit()
+    self.segmentEditorWidget.setActiveEffect(None)
+    self.segmentEditorWidget.uninstallKeyboardShortcuts()
+    self.segmentEditorWidget.removeViewObservations()
+
+  def _getOrCreateSegmentationForNode(self, volumeNode):
+    """Find existing segmentation for this volume, or create a new empty one."""
+    expectedName = volumeNode.GetName() + '_segmentation'
+    segmentationNodes = slicer.mrmlScene.GetNodesByClass('vtkMRMLSegmentationNode')
+    segmentationNodes.UnRegister(slicer.mrmlScene)
+    for idx in range(segmentationNodes.GetNumberOfItems()):
+      segNode = segmentationNodes.GetItemAsObject(idx)
+      if segNode.GetName() == expectedName:
+        return segNode
+    # Create new segmentation
+    segNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLSegmentationNode', expectedName)
+    segNode.CreateDefaultDisplayNodes()
+    segNode.SetReferenceImageGeometryParameterFromVolumeNode(volumeNode)
+    return segNode
+
+  def _setupSegmentationObserver(self, segmentationNode):
+    """Observe segment modifications to trigger recalculation."""
+    self._removeSegmentationObserver()
+    segmentation = segmentationNode.GetSegmentation()
+    self._observedSegmentation = segmentation
+    self._segmentationObserverTag = segmentation.AddObserver(
+        vtkSegmentationCore.vtkSegmentation.SegmentModified,
+        self._onSegmentModified)
+
+  def _removeSegmentationObserver(self):
+    if self._segmentationObserverTag is not None and self._observedSegmentation is not None:
+      self._observedSegmentation.RemoveObserver(self._segmentationObserverTag)
+    self._segmentationObserverTag = None
+    self._observedSegmentation = None
+
+  def _onSegmentModified(self, caller, event):
+    """Called when any segment is modified. Debounce to avoid running CLI on every paint stroke."""
+    self.resultsTable.visible = False
+    if not self.moduleVisible:
+      return
+    if self._debounceTimer is not None:
+      self._debounceTimer.stop()
+    self._debounceTimer = qt.QTimer()
+    self._debounceTimer.setSingleShot(True)
+    self._debounceTimer.timeout.connect(self.calculateIndicesForCurrentSegment)
+    self._debounceTimer.start(500)
+
+  def _exportSegmentToLabelMap(self, segmentationNode, segmentID, referenceVolumeNode):
+    """Export a single segment to a temporary label map node. Returns the node or None."""
+    labelNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLLabelMapVolumeNode', 'temp_petindic_label')
+    segmentIds = vtk.vtkStringArray()
+    segmentIds.InsertNextValue(segmentID)
+    success = slicer.modules.segmentations.logic().ExportSegmentsToLabelmapNode(
+        segmentationNode, segmentIds, labelNode, referenceVolumeNode,
+        slicer.vtkSegmentation.EXTENT_REFERENCE_GEOMETRY)
+    if not success or not labelNode.GetImageData():
+      slicer.mrmlScene.RemoveNode(labelNode)
+      return None
+    return labelNode
 
   def onVolumeSelect(self):
-    """Search for the dedicated label image. If none found, create a new one."""
+    """Set up segmentation for the selected volume."""
     if self.inputSelector.currentNode():
-      labelNode = None
-      self.labelSelector.setMRMLScene( slicer.mrmlScene )
-      volumeNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
-      labelNode = self.logic.getLabelNodeForNode(volumeNode)
-      if not hasattr(volumeNode, 'labelNode'):
-        volumeNode.labelNode = labelNode
-        volumeNode.labels = [0]
-        stataccum = vtk.vtkImageAccumulate()
-        stataccum.SetInputData(labelNode.GetImageData())
-        stataccum.Update()
-        lo = int(stataccum.GetMin()[0])
-        hi = int(stataccum.GetMax()[0])
-        for value in range(lo,hi):
-          volumeNode.labels.append(value+1)
-      self.labelSelector.setCurrentNode(labelNode)
+      volumeNode = self.inputSelector.currentNode()
+
+      # Find or create segmentation
+      segmentationNode = self._getOrCreateSegmentationForNode(volumeNode)
+      self.segmentationSelector.setCurrentNode(segmentationNode)
+
+      # Configure segment editor
+      self.segmentEditorWidget.setSegmentationNode(segmentationNode)
+      self.segmentEditorWidget.setSourceVolumeNode(volumeNode)
+
+      # Units display
       if self.resultsTable.columnCount != 3:
         self.resultsTable.setColumnCount(3)
         self.resultsTable.setHorizontalHeaderLabels(['Index','Value','Units'])
@@ -290,10 +337,10 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
         self.resultsTable.removeColumn(2) # no units information
       self.unitsFrameLabel.setText('Voxel Units: ' + units)
 
+      # Propagate volume selection for slice viewers
       appLogic = slicer.app.applicationLogic()
       selNode = appLogic.GetSelectionNode()
       selNode.SetReferenceActiveVolumeID(volumeNode.GetID())
-      selNode.SetReferenceActiveLabelVolumeID(labelNode.GetID())
       appLogic.PropagateVolumeSelection()
 
       self.preset1Button.setEnabled(1)
@@ -301,13 +348,10 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
       self.preset3Button.setEnabled(1)
       self.preset4Button.setEnabled(1)
 
-      if volumeNode.GetName() not in self.volumeDictionary:
-        self.volumeDictionary[volumeNode.GetName()] = volumeNode
-        # TODO figure out how to observe only image data changes,
-        # currently this is also triggered when the image name changes
-        volumeNode.observerTag = labelNode.AddObserver('ModifiedEvent', self.labelModified)
+      # Set up segmentation observer
+      self._setupSegmentationObserver(segmentationNode)
 
-      self.calculateIndicesFromCurrentLabel(self.editorWidget.toolsColor.colorSpin.value)
+      self.calculateIndicesForCurrentSegment()
 
     else:
       self.preset1Button.setEnabled(0)
@@ -319,79 +363,67 @@ class PETIndiCWidget(ScriptedLoadableModuleWidget):
 
   def onPreset1Button(self):
     if self.inputSelector.currentNode():
-      imageNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
+      imageNode = self.inputSelector.currentNode()
       self.logic.presetSUVInvertedGrey(imageNode)
 
   def onPreset2Button(self):
     if self.inputSelector.currentNode():
-      imageNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
+      imageNode = self.inputSelector.currentNode()
       self.logic.presetSUVRainbow(imageNode)
 
   def onPreset3Button(self):
     if self.inputSelector.currentNode():
-      imageNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
+      imageNode = self.inputSelector.currentNode()
       self.logic.presetSUVInvertedGreyFLT(imageNode)
 
   def onPreset4Button(self):
     if self.inputSelector.currentNode():
-      imageNode = slicer.mrmlScene.GetNodeByID(self.inputSelector.currentNodeID)
+      imageNode = self.inputSelector.currentNode()
       self.logic.presetGreyAuto(imageNode)
 
-  def labelModified(self, caller, event):
-    if caller.GetID() == self.labelSelector.currentNodeID:
-      self.resultsTable.visible = False
-      if not self.moduleVisible: # do not calculate values if module is not shown
-        return
-      volumeNode = self.inputSelector.currentNode()
-      labelNode = self.labelSelector.currentNode()
-      labelValue = self.editorWidget.toolsColor.colorSpin.value
-      if labelValue > 0:
-        if volumeNode and labelNode:
-          if labelValue not in volumeNode.labels:
-            volumeNode.labels.append(labelValue)
-          pd = qt.QProgressDialog('Calculating...', 'Cancel', 0, 100, slicer.util.mainWindow())
-          pd.setModal(True)
-          pd.setMinimumDuration(0)
-          pd.show()
-          pd.setValue(1)
-          slicer.app.processEvents()
-          cliNode = None
-          cliNode = self.calculateIndices(volumeNode, labelNode, None, labelValue)
-          if cliNode:
-            self.populateResultsTable(cliNode)
-          else:
-            print('ERROR: could not read output of Quantitative Indices Calculator')
-          pd.setValue(100)
+  def onCurrentSegmentChanged(self, segmentID):
+    """Recalculate indices when the user selects a different segment."""
+    if segmentID:
+      self.calculateIndicesForCurrentSegment()
 
-  def calculateIndicesFromCurrentLabel(self, labelValue):
+  def calculateIndicesForCurrentSegment(self):
+    """Calculate quantitative indices for the currently selected segment."""
     self.resultsTable.visible = False
-    if not self.moduleVisible: # do not calculate values if module is not shown
+    if not self.moduleVisible:
       return
     volumeNode = self.inputSelector.currentNode()
-    labelNode = self.labelSelector.currentNode()
-    if labelValue > 0:
-      if volumeNode and labelNode:
-        if labelValue in volumeNode.labels:
-          pd = qt.QProgressDialog('Calculating...', 'Cancel', 0, 100, slicer.util.mainWindow())
-          pd.setModal(True)
-          pd.setMinimumDuration(0)
-          pd.show()
-          pd.setValue(1)
-          slicer.app.processEvents()
-          cliNode = None
-          cliNode = self.calculateIndices(volumeNode, labelNode, None, labelValue)
-          if cliNode:
-            self.populateResultsTable(cliNode)
-          else:
-            print('ERROR: could not read output of Quantitative Indices Calculator')
-          pd.setValue(100)
+    segmentationNode = self.segmentationSelector.currentNode()
+    segmentID = self.segmentEditorWidget.currentSegmentID()
+    if not volumeNode or not segmentationNode or not segmentID:
+      return
+    segment = segmentationNode.GetSegmentation().GetSegment(segmentID)
+    if not segment:
+      return
+
+    pd = qt.QProgressDialog('Calculating...', 'Cancel', 0, 100, slicer.util.mainWindow())
+    pd.setModal(True)
+    pd.setMinimumDuration(0)
+    pd.show()
+    pd.setValue(1)
+    slicer.app.processEvents()
+
+    # Export single segment to temporary label map
+    labelNode = self._exportSegmentToLabelMap(segmentationNode, segmentID, volumeNode)
+    if labelNode:
+      cliNode = self.calculateIndices(volumeNode, labelNode, None, 1) # label value is always 1
+      slicer.mrmlScene.RemoveNode(labelNode) # clean up temporary node
+      if cliNode:
+        self.populateResultsTable(cliNode)
+      else:
+        print('ERROR: could not read output of Quantitative Indices Calculator')
+    pd.setValue(100)
 
   def onFeatureSelectionChanged(self):
     self.recalculateButton.enabled = True
 
   def onRecalculate(self):
     self.recalculateButton.enabled = False
-    self.calculateIndicesFromCurrentLabel(self.editorWidget.toolsColor.colorSpin.value)
+    self.calculateIndicesForCurrentSegment()
 
   def calculateIndices(self, volumeNode, labelNode, cliNode, labelValue):
     newNode = None
@@ -460,54 +492,6 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
   def __init__(self, parent = None):
     ScriptedLoadableModuleLogic.__init__(self, parent)
 
-  """def createParameterNode(self):
-    node = ScriptedLoadableModuleLogic.createParameterNode(self)
-    node.SetName(slicer.mrmlScene.GetUniqueNameByString(self.moduleName))
-    return node"""
-
-  def getLabelNodeForNode(self, currentNode):
-    """Search for the dedicated label image. If none found, return a new one."""
-    imageNode = None
-    imageName = currentNode.GetName()
-    scalarVolumes = slicer.mrmlScene.GetNodesByClass('vtkMRMLScalarVolumeNode')
-    scalarVolumes.UnRegister(slicer.mrmlScene)
-    labelFound = False
-    for idx in range(0,scalarVolumes.GetNumberOfItems()): #TODO use while loop
-      imageNode = scalarVolumes.GetItemAsObject(idx)
-      if imageNode.GetName() == (imageName + '_label'):
-        print('Found dedicated label ' + imageNode.GetName())
-        labelFound = True
-        break
-    if not labelFound:
-      print('Creating dedicated label ' + imageName + '_label')
-      # TODO find a better way to create a blank label map
-      imageNode = slicer.mrmlScene.AddNode(slicer.vtkMRMLLabelMapVolumeNode())
-      newLabelData = vtk.vtkImageData()
-      newLabelData.DeepCopy(currentNode.GetImageData())
-      ijkToRAS = vtk.vtkMatrix4x4()
-      currentNode.GetIJKToRASMatrix(ijkToRAS)
-      imageNode.SetIJKToRASMatrix(ijkToRAS)
-      caster = vtk.vtkImageCast()
-      caster.SetOutputScalarTypeToShort()
-      caster.SetInputData(newLabelData)
-      caster.Update()
-      newLabelData.DeepCopy(caster.GetOutput())
-      imageNode.SetAndObserveImageData(newLabelData)
-
-      multiplier = vtk.vtkImageMathematics()
-      multiplier.SetOperationToMultiplyByK()
-      multiplier.SetConstantK(0)
-      if vtk.VTK_MAJOR_VERSION <= 5:
-        multiplier.SetInput1(imageNode.GetImageData())
-      else:
-        multiplier.SetInput1Data(imageNode.GetImageData())
-      multiplier.Update()
-      imageNode.GetImageData().DeepCopy(multiplier.GetOutput())
-
-      imageNode.SetName(imageName + '_label')
-
-    return imageNode
-
   def presetSUVInvertedGrey(self, imageNode):
     print('  Changing W/L to 6/3')
     displayNode = imageNode.GetVolumeDisplayNode()
@@ -551,7 +535,6 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
                         maxFlag, quart1Flag, medianFlag, quart3Flag, upperAdjacentFlag, q1Flag, q2Flag, q3Flag,
                         q4Flag, gly1Flag, gly2Flag, gly3Flag, gly4Flag, TLGFlag, SAMFlag, SAMBGFlag, RMSFlag,
                         PeakFlag, VolumeFlag):
-    #print('      Recalculating QIs')
     qiLogic = slicer.modules.QuantitativeIndicesToolWidget.logic
     node = qiLogic.run(scalarVolume,labelVolume,cliNode,labelValue,meanFlag, stddevFlag, minFlag,
                         maxFlag, quart1Flag, medianFlag, quart3Flag, upperAdjacentFlag, q1Flag, q2Flag, q3Flag,
@@ -560,7 +543,7 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
     return node
 
   def getUnitsForIndex(self, imageUnits, indexName):
-    """Attemto interpret units """
+    """Attempt to interpret units"""
     if imageUnits not in ['{SUVbw}g/ml','{SUVlbm}g/ml','{SUVibw}g/ml']: # TODO '{SUVbsa}cm2/ml'
       print('WARNING: could not interpret units for '+ indexName +'. Units: '+ imageUnits)
       return '-'
@@ -570,8 +553,6 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
         return units
       elif indexName=='Volume':
         return 'ml'
-      #elif indexName=='Variance':
-        #return units + '^2'
       elif indexName in ['TLG','Glycolysis Q1','Glycolysis Q2','Glycolysis Q3','Glycolysis Q4','SAM']:
         return units + '*ml'
       elif indexName in ['Q1 Distribution','Q2 Distribution','Q3 Distribution','Q4 Distribution']:
@@ -588,42 +569,9 @@ class PETIndiCLogic(ScriptedLoadableModuleLogic):
     if not volumeNode:
       logging.debug('hasImageData failed: no volume node')
       return False
-    if volumeNode.GetImageData() == None:
+    if volumeNode.GetImageData() is None:
       logging.debug('hasImageData failed: no image data in volume node')
       return False
-    return True
-
-  def isValidInputOutputData(self, inputVolumeNode, outputVolumeNode):
-    """Validates if the output is not the same as input
-    """
-    if not inputVolumeNode:
-      logging.debug('isValidInputOutputData failed: no input volume node defined')
-      return False
-    if not outputVolumeNode:
-      logging.debug('isValidInputOutputData failed: no output volume node defined')
-      return False
-    if inputVolumeNode.GetID()==outputVolumeNode.GetID():
-      logging.debug('isValidInputOutputData failed: input and output volume is the same. Create a new volume for output to avoid this error.')
-      return False
-    return True
-
-  def run(self, inputVolume, outputVolume, imageThreshold):
-    """
-    Run the actual algorithm
-    """
-
-    if not self.isValidInputOutputData(inputVolume, outputVolume):
-      slicer.util.errorDisplay('Input volume is the same as output volume. Choose a different output volume.')
-      return False
-
-    logging.info('Processing started')
-
-    # Compute the thresholded output volume using the Threshold Scalar Volume CLI module
-    cliParams = {'InputVolume': inputVolume.GetID(), 'OutputVolume': outputVolume.GetID(), 'ThresholdValue' : imageThreshold, 'ThresholdType' : 'Above'}
-    cliNode = slicer.cli.run(slicer.modules.thresholdscalarvolume, None, cliParams, wait_for_completion=True)
-
-    logging.info('Processing completed')
-
     return True
 
 
@@ -640,7 +588,6 @@ class CustomTableWidget(qt.QTableWidget):
 
   def copyCells(self):
     indexes = self.getSelectedCells()
-    #print indexes
     text = ''
     highestCol = indexes[len(indexes)-1][1]
     for index in indexes:
@@ -651,7 +598,6 @@ class CustomTableWidget(qt.QTableWidget):
           text += '\t'
         else:
           text += '\n'
-    #print text
     qt.QApplication.clipboard().setText(text)
 
   def getSelectedCells(self):
@@ -744,6 +690,14 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
 
     return imageNode
 
+  def _applyThreshold(self, widget, minThreshold, maxThreshold):
+    """Helper to apply threshold effect using segment editor."""
+    widget.segmentEditorWidget.setActiveEffectByName('Threshold')
+    effect = widget.segmentEditorWidget.activeEffect()
+    effect.setParameter('MinimumThreshold', minThreshold)
+    effect.setParameter('MaximumThreshold', maxThreshold)
+    effect.self().onApply()
+
   def test_PETIndiC(self):
     """ test standard segmentation and report generation
     """
@@ -760,17 +714,13 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
         m.moduleSelector().selectModule('PETIndiC') # not PET-IndiC here
         widget = slicer.modules.PETIndiCWidget
         widget.inputSelector.setCurrentNode(petNode)
-        labelNode = widget.labelSelector.currentNode()
-        self.assertIsNotNone(labelNode)
+        segmentationNode = widget.segmentationSelector.currentNode()
+        self.assertIsNotNone(segmentationNode)
 
         upperThreshold = 89.85#10000
 
         self.delayDisplay('Producing segmentation')
-        widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
-        thresholdOptions = widget.editorWidget.toolsBox.currentOption
-        thresholdOptions.threshold.minimumValue = 30
-        thresholdOptions.threshold.maximumValue = upperThreshold
-        thresholdOptions.onApply()
+        self._applyThreshold(widget, 30, upperThreshold)
 
         self.delayDisplay('Checking initial measurement results')
         t = widget.resultsTable
@@ -790,34 +740,23 @@ class PETIndiCTest(ScriptedLoadableModuleTest):
         self._verifyResults(t, values)
 
         self.delayDisplay('Updating segmentation and verifying results')
-        widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
-        thresholdOptions = widget.editorWidget.toolsBox.currentOption
-        thresholdOptions.threshold.minimumValue = 25
-        thresholdOptions.threshold.maximumValue = upperThreshold
-        thresholdOptions.onApply()
+        self._applyThreshold(widget, 25, upperThreshold)
         self._verifyResults(t, {'Mean':(53.8255,'SUVbw')})
 
-        self.delayDisplay('Creating segmentation with new label')
-        colorSpin = widget.editorWidget.toolsColor.colorSpin
-        colorSpin.value=2
+        self.delayDisplay('Creating segmentation with new segment')
+        segmentation = segmentationNode.GetSegmentation()
+        segmentID2 = segmentation.AddEmptySegment('Segment_2')
+        widget.segmentEditorWidget.setCurrentSegmentID(segmentID2)
         self.assertFalse(t.visible)
-        widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
-        thresholdOptions = widget.editorWidget.toolsBox.currentOption
-        thresholdOptions.threshold.minimumValue = 50
-        thresholdOptions.threshold.maximumValue = upperThreshold
-        thresholdOptions.onApply()
+        self._applyThreshold(widget, 50, upperThreshold)
         self._verifyResults(t, {'Mean':(68.0497,'SUVbw')})
-        widget.editorWidget.toolsBox.selectEffect('ThresholdEffect')
-        thresholdOptions = widget.editorWidget.toolsBox.currentOption
-        thresholdOptions.threshold.minimumValue = 60
-        thresholdOptions.threshold.maximumValue = upperThreshold
-        thresholdOptions.onApply()
+        self._applyThreshold(widget, 60, upperThreshold)
         self._verifyResults(t, {'Mean':(72.8926,'SUVbw')})
 
         self.delayDisplay('Testing undo/redo')
-        widget.editorWidget.toolsBox.buttons['PreviousCheckPoint'].click()
+        widget.segmentEditorWidget.undo()
         self._verifyResults(t, {'Mean':(68.0497,'SUVbw')})
-        widget.editorWidget.toolsBox.buttons['NextCheckPoint'].click()
+        widget.segmentEditorWidget.redo()
         self._verifyResults(t, {'Mean':(72.8926,'SUVbw')})
 
         self.delayDisplay('Test passed!')
