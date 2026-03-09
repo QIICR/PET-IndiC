@@ -9,7 +9,7 @@ measurements (mean SUV, peak, TLG, SAM, quartiles, etc.).
 
 **Repository**: <https://github.com/QIICR/PET-IndiC>
 **Slicer category**: Quantification
-**Target Slicer version**: 5.6+
+**Developed and tested with**: Slicer 5.10
 
 ## Repository Structure
 
@@ -231,7 +231,7 @@ the CLI node's output parameters.
 
 ## Dependencies
 
-- **3D Slicer 5.6+** (Python 3, Qt 5, VTK 9, ITK 5)
+- **3D Slicer 5.10** (Python 3, Qt 5, VTK 9, ITK 5)
 - **vtkSegmentationCore** — segment manipulation
 - **SegmentStatistics** module — plugin registration
 - **DICOMLib** — DICOM attribute access for units

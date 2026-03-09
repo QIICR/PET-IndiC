@@ -5,7 +5,7 @@
 The PET-IndiC module was disabled in November 2021 when 3D Slicer removed the
 legacy Editor module ([Slicer commit 39283db](https://github.com/Slicer/Slicer/commit/39283db420baf502fa99865c9d5d58d0e5295a6e)).
 This migration replaces all legacy Editor API usage with the modern Segment
-Editor (`qMRMLSegmentEditorWidget`) API, targeting Slicer 5.6+.
+Editor (`qMRMLSegmentEditorWidget`) API. Developed and tested with Slicer 5.10.
 
 ## Files Changed
 
